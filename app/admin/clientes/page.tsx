@@ -33,7 +33,7 @@ export default function AdminClientesPage() {
       email: "admin@avenix.dev",
       role: "ADMIN",
       discordUsername: "avenix_root",
-      companyName: "Avenix Development",
+      companyName: "Avenix",
       isActive: true,
       registeredAt: "2026-11-01",
     },

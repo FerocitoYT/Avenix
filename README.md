@@ -1,4 +1,4 @@
-# AVENIX DEVELOPMENT — PLATAFORMA INTEGRAL DE SERVICIOS TECNOLÓGICOS
+# AVENIX — PLATAFORMA INTEGRAL DE SERVICIOS TECNOLÓGICOS
 
 > **Eslogan:** *Build beyond limits.*  
 > **Identidad visual:** Estética tecnológica premium, modo oscuro por defecto (`#0B1220`), azul eléctrico (`#3B82F6`), tipografía moderna y panel de control unificado.
@@ -7,7 +7,7 @@
 
 ## 1. DESCRIPCIÓN DEL PROYECTO
 
-Avenix Development es una plataforma comercial y técnica completa desarrollada desde cero para una empresa especializada en:
+Avenix es una plataforma comercial y técnica completa desarrollada desde cero para una empresa especializada en:
 - **Desarrollo de bots de Discord personalizados** (moderación, tickets, economía, roles automatizados, bases de datos).
 - **Desarrollo web y aplicaciones Next.js** (webs corporativas, tiendas online, plataformas SaaS).
 - **Hosting y Cloud dedicado** (alojamiento gestionado de bots en nodos europeos con Anti-DDoS).
@@ -143,7 +143,7 @@ Para crear la primera cuenta con rol `ADMIN`:
 1. Sube el repositorio a GitHub:
    ```bash
    git add .
-   git commit -m "feat: Avenix Development enterprise production platform"
+   git commit -m "feat: Avenix enterprise production platform"
    git remote add origin <tu-repositorio-github>
    git push -u origin main
    ```

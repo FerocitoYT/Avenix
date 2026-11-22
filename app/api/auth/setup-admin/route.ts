@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       role: adminUser.role,
       discordId: null,
       discordUsername: null,
-      companyName: "Avenix Development Staff",
+      companyName: "Avenix Staff",
     };
 
     const token = signToken(sessionPayload);

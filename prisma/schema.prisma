@@ -1,4 +1,4 @@
-// Prisma Schema for Avenix Development
+// Prisma Schema for Avenix
 // Compatible with PostgreSQL / Neon Database
 
 generator client {

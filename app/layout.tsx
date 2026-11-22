@@ -3,13 +3,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Avenix Development | Build beyond limits",
-    template: "%s | Avenix Development",
+    default: "Avenix | Build beyond limits",
+    template: "%s | Avenix",
   },
   description:
     "Desarrollo profesional de bots de Discord personalizados, aplicaciones web de alto rendimiento, hosting cloud optimizado y automatizaciones para comunidades y empresas.",
   keywords: [
-    "Avenix Development",
+    "Avenix",
     "Bots de Discord personalizados",
     "Desarrollo web Next.js",
     "Hosting bots Discord",
@@ -17,21 +17,21 @@ export const metadata: Metadata = {
     "Software a medida",
     "Avenix Control",
   ],
-  authors: [{ name: "Avenix Development Team" }],
-  creator: "Avenix Development",
+  authors: [{ name: "Avenix Team" }],
+  creator: "Avenix",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
     locale: "es_ES",
     url: "/",
-    title: "Avenix Development — Build beyond limits",
+    title: "Avenix — Build beyond limits",
     description:
       "Transformamos tus ideas en soluciones digitales. Bots de Discord a medida, plataformas web modernas y hosting de alta disponibilidad.",
-    siteName: "Avenix Development",
+    siteName: "Avenix",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Avenix Development — Build beyond limits",
+    title: "Avenix — Build beyond limits",
     description:
       "Transformamos tus ideas en soluciones digitales. Bots de Discord a medida, plataformas web modernas y hosting de alta disponibilidad.",
   },

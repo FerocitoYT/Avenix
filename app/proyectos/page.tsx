@@ -17,7 +17,7 @@ import {
 export const metadata = {
   title: "Portfolio de Proyectos Autorizados",
   description:
-    "Proyectos y desarrollos autorizados de Avenix Development. Bots de Discord y soluciones web en producción.",
+    "Proyectos y desarrollos autorizados de Avenix. Bots de Discord y soluciones web en producción.",
 };
 
 export const dynamic = "force-dynamic";
@@ -52,7 +52,7 @@ export default async function ProjectsPage() {
             Portfolio de Proyectos
           </h1>
           <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto">
-            Explora las plataformas web, bots e integraciones desarrolladas por el equipo de Avenix Development que cuentan con autorización pública.
+            Explora las plataformas web, bots e integraciones desarrolladas por el equipo de Avenix que cuentan con autorización pública.
           </p>
         </div>
       </section>
@@ -147,7 +147,7 @@ export default async function ProjectsPage() {
             </h3>
 
             <p className="text-slate-300 text-sm leading-relaxed">
-              En Avenix Development trabajamos bajo estrictos Acuerdos de Confidencialidad (NDA).
+              En Avenix trabajamos bajo estrictos Acuerdos de Confidencialidad (NDA).
               Únicamente exponemos públicamente proyectos que cuentan con el consentimiento expreso de sus propietarios.
             </p>
 

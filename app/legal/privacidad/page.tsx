@@ -25,7 +25,7 @@ export default function PrivacidadPage() {
               1. Responsable del tratamiento
             </h2>
             <p>
-              El responsable del tratamiento de los datos recabados en este sitio web es <strong>Avenix Development</strong>. Puedes contactar con nuestro delegado de privacidad en: <strong>contacto@avenix.dev</strong>.
+              El responsable del tratamiento de los datos recabados en este sitio web es <strong>Avenix</strong>. Puedes contactar con nuestro delegado de privacidad en: <strong>contacto@avenix.dev</strong>.
             </p>
           </section>
 

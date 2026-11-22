@@ -96,16 +96,8 @@ export function AvenixLogo({
       <AvenixLogoIcon size={size} />
       {!iconOnly && (
         <div className="flex flex-col select-none">
-          <div className="flex items-center gap-1.5 leading-none">
-            <span className="font-extrabold tracking-wider text-white text-base md:text-lg font-display">
-              AVENIX
-            </span>
-            <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
-              DEV
-            </span>
-          </div>
-          <span className="text-[9px] font-semibold tracking-[0.25em] text-slate-400 uppercase mt-0.5">
-            Development
+          <span className="font-extrabold tracking-wider text-white text-lg md:text-xl font-display">
+            AVENIX
           </span>
         </div>
       )}

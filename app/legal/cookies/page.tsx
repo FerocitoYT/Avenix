@@ -31,7 +31,7 @@ export default function CookiesPage() {
 
           <section className="space-y-2">
             <h2 className="text-lg font-bold text-white font-display">
-              2. Cookies utilizadas en Avenix Development
+              2. Cookies utilizadas en Avenix
             </h2>
             <p>
               En nuestra plataforma priorizamos la mínima recopilación de datos y la privacidad del usuario:

@@ -207,7 +207,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="pt-8 mt-8 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>
-            © {new Date().getFullYear()} Avenix Development. Todos los derechos reservados.
+            © {new Date().getFullYear()} Avenix. Todos los derechos reservados.
             Hecho con estándares de producción e ingeniería de software moderna.
           </p>
           <div className="flex items-center gap-4 text-slate-400">

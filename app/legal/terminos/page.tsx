@@ -25,7 +25,7 @@ export default function TerminosPage() {
               1. Aceptación de los términos
             </h2>
             <p>
-              La contratación de cualquier servicio o producto (incluyendo bots de Discord, webs, hosting o suscripciones) a través de Avenix Development implica la aceptación íntegra de las presentes condiciones contractuales.
+              La contratación de cualquier servicio o producto (incluyendo bots de Discord, webs, hosting o suscripciones) a través de Avenix implica la aceptación íntegra de las presentes condiciones contractuales.
             </p>
           </section>
 

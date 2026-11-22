@@ -37,7 +37,7 @@ export async function POST(req: Request) {
             currency: "eur",
             product_data: {
               name: validated.productName,
-              description: `Servicio oficial Avenix Development — Ref: ${validated.priceId}`,
+              description: `Servicio oficial Avenix — Ref: ${validated.priceId}`,
             },
             unit_amount: validated.amountCents,
             ...(validated.billingType === "RECURRING"

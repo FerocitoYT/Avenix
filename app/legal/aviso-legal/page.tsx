@@ -28,7 +28,7 @@ export default function AvisoLegalPage() {
               En cumplimiento del artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE), se informa de los datos identificativos de la entidad titular de la presente plataforma:
             </p>
             <ul className="list-disc pl-5 space-y-1 text-slate-400">
-              <li>Denominación comercial: <strong>Avenix Development</strong></li>
+              <li>Denominación comercial: <strong>Avenix</strong></li>
               <li>Actividad: Desarrollo de software, bots de Discord, soluciones web y alojamiento en la nube</li>
               <li>Correo electrónico de contacto: <strong>contacto@avenix.dev</strong></li>
               <li>Sitio web: <strong>https://avenix.dev</strong></li>
@@ -40,7 +40,7 @@ export default function AvisoLegalPage() {
               2. Objeto y ámbito de aplicación
             </h2>
             <p>
-              El presente Aviso Legal regula el acceso, navegación y uso del sitio web de Avenix Development, así como las responsabilidades derivadas del uso de sus contenidos, marcas, código fuente y servicios asociados.
+              El presente Aviso Legal regula el acceso, navegación y uso del sitio web de Avenix, así como las responsabilidades derivadas del uso de sus contenidos, marcas, código fuente y servicios asociados.
             </p>
           </section>
 
@@ -49,7 +49,7 @@ export default function AvisoLegalPage() {
               3. Propiedad intelectual e industrial
             </h2>
             <p>
-              Todos los contenidos de esta web, incluyendo pero no limitándose a textos, logotipos vectoriales, diseños gráficos, código fuente en TypeScript, estilos CSS y bases de datos, son titularidad exclusiva de Avenix Development o de terceros que han autorizado su uso, quedando expresamente prohibida su reproducción, distribución o transformación sin autorización previa por escrito.
+              Todos los contenidos de esta web, incluyendo pero no limitándose a textos, logotipos vectoriales, diseños gráficos, código fuente en TypeScript, estilos CSS y bases de datos, son titularidad exclusiva de Avenix o de terceros que han autorizado su uso, quedando expresamente prohibida su reproducción, distribución o transformación sin autorización previa por escrito.
             </p>
           </section>
 
@@ -58,7 +58,7 @@ export default function AvisoLegalPage() {
               4. Limitación de responsabilidad
             </h2>
             <p>
-              Avenix Development no se hace responsable de los daños derivados de caídas imprevistas de redes de telecomunicaciones, ataques informáticos externos que superen los estándares razonables de seguridad o del uso indebido que terceros hagan de los bots o aplicaciones desarrolladas una vez entregadas al cliente.
+              Avenix no se hace responsable de los daños derivados de caídas imprevistas de redes de telecomunicaciones, ataques informáticos externos que superen los estándares razonables de seguridad o del uso indebido que terceros hagan de los bots o aplicaciones desarrolladas una vez entregadas al cliente.
             </p>
           </section>
         </div>

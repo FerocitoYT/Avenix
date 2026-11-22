@@ -182,7 +182,7 @@ const OFFICIAL_CATALOG = [
 ];
 
 async function main() {
-  console.log("Iniciando sembrado del catálogo de Avenix Development...");
+  console.log("Iniciando sembrado del catálogo de Avenix...");
 
   for (const prod of OFFICIAL_CATALOG) {
     const upsertedProd = await prisma.product.upsert({

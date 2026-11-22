@@ -17,7 +17,7 @@ import { formatDateTime } from "@/lib/utils";
 
 export default function AdminConfiguracionPage() {
   const [companySettings, setCompanySettings] = useState({
-    companyName: "Avenix Development",
+    companyName: "Avenix",
     tagline: "Build beyond limits.",
     contactEmail: "contacto@avenix.dev",
     supportEmail: "soporte@avenix.dev",

@@ -14,7 +14,7 @@ export default function NotFound() {
         <h1 className="text-3xl font-extrabold text-white font-display">404</h1>
         <h2 className="text-base font-bold text-white font-display">Página no encontrada</h2>
         <p className="text-xs text-slate-400">
-          La ruta a la que intentas acceder no existe o ha sido reubicada dentro de Avenix Development.
+          La ruta a la que intentas acceder no existe o ha sido reubicada dentro de Avenix.
         </p>
         <div className="pt-2">
           <Link
