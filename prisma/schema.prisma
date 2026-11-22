@@ -1,0 +1,505 @@
+// Prisma Schema for Avenix Development
+// Compatible with PostgreSQL / Neon Database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  EMPLOYEE
+  ADMIN
+}
+
+enum ServiceCategory {
+  DISCORD_BOT
+  WEB_DEVELOPMENT
+  HOSTING_CLOUD
+  AUTOMATION
+}
+
+enum PriceBillingType {
+  ONE_TIME
+  RECURRING
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  IN_DEVELOPMENT
+  IN_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum QuoteStatus {
+  PENDING
+  REVIEWING
+  PROPOSAL_SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum ServiceStatus {
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+  PENDING_SETUP
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+  INCOMPLETE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+  UNCOLLECTIBLE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CLIENT
+  RESOLVED
+  CLOSED
+}
+
+enum BotStatus {
+  STOPPED
+  RUNNING
+  RESTARTING
+  ERROR
+  MAINTENANCE
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ORDER
+  INVOICE
+  TICKET
+}
+
+model User {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  name             String
+  passwordHash     String?
+  image            String?
+  discordId        String?         @unique
+  discordUsername  String?
+  role             Role            @default(CLIENT)
+  isActive         Boolean         @default(true)
+  emailVerified    DateTime?
+  companyName      String?
+  taxId            String?         // NIF/CIF
+  phone            String?
+  address          String?
+  city             String?
+  postalCode       String?
+  country          String?         @default("España")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relaciones
+  accounts         Account[]
+  sessions         Session[]
+  orders           Order[]
+  quotes           Quote[]
+  services         Service[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  tickets          SupportTicket[] @relation("ClientTickets")
+  assignedTickets  SupportTicket[] @relation("AssignedStaffTickets")
+  ticketMessages   TicketMessage[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Product {
+  id           String          @id @default(cuid())
+  slug         String          @unique
+  name         String
+  tagline      String
+  description  String          @db.Text
+  category     ServiceCategory
+  features     String[]        // Array de características destacadas
+  isAvailable  Boolean         @default(true)
+  isFeatured   Boolean         @default(false)
+  badge        String?         // ej: "Popular", "Recomendado", "Próximamente"
+  displayOrder Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  prices       ProductPrice[]
+  orderItems   OrderItem[]
+
+  @@index([category])
+  @@index([slug])
+}
+
+model ProductPrice {
+  id             String           @id @default(cuid())
+  productId      String
+  name           String           // ej: "Básico", "Avanzado", "Mensual"
+  billingType    PriceBillingType
+  interval       BillingInterval? // MONTH o YEAR si es RECURRING
+  priceCents     Int              // Precio en céntimos (ej: 7900 para 79,00 €)
+  currency       String           @default("EUR")
+  vatIncluded    Boolean          @default(true)
+  vatRatePercent Float            @default(21.0)
+  stripePriceId  String?
+  isPopular      Boolean          @default(false)
+  isAvailable    Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  product        Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+
+  @@index([productId])
+}
+
+model Order {
+  id               String        @id @default(cuid())
+  orderNumber      String        @unique // ej: AVX-2026-0001
+  userId           String
+  status           OrderStatus   @default(PENDING)
+  totalAmountCents Int
+  currency         String        @default("EUR")
+  notes            String?       @db.Text
+  deliveryDate     DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id])
+  items            OrderItem[]
+  services         Service[]
+  invoices         Invoice[]
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+}
+
+model OrderItem {
+  id             String        @id @default(cuid())
+  orderId        String
+  productId      String
+  productPriceId String
+  quantity       Int           @default(1)
+  unitPriceCents Int
+  productName    String
+  customConfig   Json?
+
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product       @relation(fields: [productId], references: [id])
+  productPrice   ProductPrice  @relation(fields: [productPriceId], references: [id])
+
+  @@index([orderId])
+}
+
+model Project {
+  id                   String   @id @default(cuid())
+  name                 String
+  slug                 String   @unique
+  description          String   @db.Text
+  category             ServiceCategory
+  clientName           String?
+  technologies         String[]
+  coverImage           String?
+  images               String[]
+  status               String   @default("Completado")
+  liveUrl              String?
+  isFeatured           Boolean  @default(false)
+  isPublicAuthorized   Boolean  @default(false) // Solo mostramos proyectos explícitamente autorizados
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isPublicAuthorized])
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  quoteNumber       String      @unique // ej: PRES-2026-0001
+  userId            String?
+  guestName         String
+  guestEmail        String
+  guestCompany      String?
+  serviceType       String
+  estimatedBudget   String
+  projectDescription String     @db.Text
+  selectedFeatures  String[]
+  status            QuoteStatus @default(PENDING)
+  adminNotes        String?     @db.Text
+  proposedPriceCents Int?
+  validUntil        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user              User?       @relation(fields: [userId], references: [id])
+
+  @@index([guestEmail])
+  @@index([status])
+}
+
+model Service {
+  id               String        @id @default(cuid())
+  userId           String
+  orderId          String?
+  name             String
+  serviceType      ServiceCategory
+  planName         String
+  status           ServiceStatus @default(ACTIVE)
+  renewalDate      DateTime?
+  monthlyCostCents Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id])
+  order            Order?        @relation(fields: [orderId], references: [id])
+  subscriptions    Subscription[]
+  botInstance      BotInstance?
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String
+  serviceId            String?
+  stripeSubscriptionId String?            @unique
+  stripeCustomerId     String?
+  status               SubscriptionStatus @default(ACTIVE)
+  planName             String
+  amountCents          Int
+  currency             String             @default("EUR")
+  interval             BillingInterval    @default(MONTH)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user                 User               @relation(fields: [userId], references: [id])
+  service              Service?           @relation(fields: [serviceId], references: [id])
+  invoices             Invoice[]
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+}
+
+model Invoice {
+  id                    String        @id @default(cuid())
+  invoiceNumber         String        @unique // ej: FAC-2026-0001
+  userId                String
+  orderId               String?
+  subscriptionId        String?
+  amountCents           Int           // Base imponible
+  vatRatePercent        Float         @default(21.0)
+  vatAmountCents        Int           // Importe IVA
+  totalAmountCents      Int           // Total con IVA
+  currency              String        @default("EUR")
+  status                InvoiceStatus @default(DRAFT)
+  stripePaymentIntentId String?
+  stripeInvoiceId       String?
+  paidAt                DateTime?
+  dueDate               DateTime
+  pdfUrl                String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  user                  User          @relation(fields: [userId], references: [id])
+  order                 Order?        @relation(fields: [orderId], references: [id])
+  subscription          Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([invoiceNumber])
+  @@index([status])
+}
+
+model SupportTicket {
+  id             String          @id @default(cuid())
+  ticketNumber   String          @unique // ej: TCK-2026-0001
+  userId         String
+  assignedToId   String?
+  title          String
+  category       String
+  priority       TicketPriority  @default(MEDIUM)
+  status         TicketStatus    @default(OPEN)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user           User            @relation("ClientTickets", fields: [userId], references: [id])
+  assignedTo     User?           @relation("AssignedStaffTickets", fields: [assignedToId], references: [id])
+  messages       TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+}
+
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  senderId    String
+  isStaffReply Boolean @default(false)
+  content     String   @db.Text
+  attachments String[]
+  createdAt   DateTime @default(now())
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender      User          @relation(fields: [senderId], references: [id])
+
+  @@index([ticketId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String           @db.Text
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model BotInstance {
+  id               String            @id @default(cuid())
+  serviceId        String            @unique
+  name             String
+  botClientId      String?
+  guildId          String?
+  status           BotStatus         @default(STOPPED)
+  nodeHost         String?           @default("eu-node-01.avenix.dev")
+  memoryLimitMb    Int               @default(512)
+  memoryUsageMb    Int               @default(0)
+  cpuLimitPercent  Int               @default(50)
+  cpuUsagePercent  Float             @default(0)
+  lastPingAt       DateTime?
+  uptimeSeconds    Int               @default(0)
+  currentLogs      String[]          @default([])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  configuration    BotConfiguration?
+
+  @@index([serviceId])
+  @@index([status])
+}
+
+model BotConfiguration {
+  id             String      @id @default(cuid())
+  botInstanceId  String      @unique
+  tokenSecretRef String?     // Referencia cifrada o ID de secreto
+  prefix         String      @default("!")
+  embedColorHex  String      @default("#3B82F6")
+  modulesEnabled String[]    @default(["moderation", "tickets", "utility"])
+  updatedAt      DateTime    @updatedAt
+
+  botInstance    BotInstance @relation(fields: [botInstanceId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String   // ej: "UPDATE_PRODUCT_PRICE", "ADMIN_LOGIN", "RESTART_BOT"
+  entityType  String   // ej: "PRODUCT", "USER", "BOT"
+  entityId    String?
+  detailsJson Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  category    String   // ej: "COMPANY", "APPEARANCE", "PAYMENTS", "INTEGRATIONS"
+  isPublic    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@index([category])
+}
