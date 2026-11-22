@@ -87,36 +87,25 @@ export const OFFICIAL_CATALOG: ProductDefinition[] = [
     isFeatured: true,
     prices: [
       {
-        id: "price-bot-starter",
-        name: "Starter",
+        id: "price-bot-monthly",
+        name: "Mensual",
         billingType: "RECURRING",
         interval: "MONTH",
-        priceCents: 499, // 4,99 €/mes
-        vatIncluded: true,
-        vatRatePercent: 21.0,
-        isPopular: false,
-        isAvailable: true,
-      },
-      {
-        id: "price-bot-pro",
-        name: "Pro",
-        billingType: "RECURRING",
-        interval: "MONTH",
-        priceCents: 999, // 9,99 €/mes
+        priceCents: 900, // 9,00 €/mes
         vatIncluded: true,
         vatRatePercent: 21.0,
         isPopular: true,
         isAvailable: true,
       },
       {
-        id: "price-bot-business",
-        name: "Business",
+        id: "price-bot-annual",
+        name: "Anual (Ahorra 38 €)",
         billingType: "RECURRING",
-        interval: "MONTH",
-        priceCents: 1999, // 19,99 €/mes
+        interval: "YEAR",
+        priceCents: 7000, // 70,00 €/año
         vatIncluded: true,
         vatRatePercent: 21.0,
-        isPopular: false,
+        isPopular: true,
         isAvailable: true,
       },
     ],
