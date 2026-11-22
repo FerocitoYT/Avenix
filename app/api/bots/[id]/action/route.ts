@@ -22,6 +22,28 @@ export async function POST(
 
     const botId = params.id;
 
+    // Dispatch to local Avenix Bot API if active
+    const botApiUrl = process.env.AVENIX_BOT_API_URL || "http://localhost:4000";
+    const internalSecret = process.env.INTERNAL_API_SECRET;
+    let dispatchedToBotService = false;
+
+    try {
+      const botResponse = await fetch(`${botApiUrl}/api/instances/${botId}/action`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(internalSecret ? { Authorization: `Bearer ${internalSecret}` } : {}),
+        },
+        body: JSON.stringify({ action }),
+        signal: AbortSignal.timeout(2000),
+      });
+      if (botResponse.ok) {
+        dispatchedToBotService = true;
+      }
+    } catch {
+      // Handled gracefully if local bot is offline or in development
+    }
+
     // Log the action to audit logs
     try {
       await prisma.auditLog.create({
@@ -34,6 +56,7 @@ export async function POST(
             userEmail: user.email,
             action,
             node: "eu-node-01.avenix.dev",
+            dispatchedToBotService,
           },
         },
       });
@@ -41,8 +64,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Acción ${action} enviada a la infraestructura Docker con éxito.`,
+      message: `Acción ${action} enviada a la infraestructura del bot con éxito.`,
       status: action === "STOP" ? "STOPPED" : "RUNNING",
+      dispatchedToBotService,
     });
   } catch (err: any) {
     if (err instanceof z.ZodError) {

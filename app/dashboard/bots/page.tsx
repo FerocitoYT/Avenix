@@ -17,6 +17,7 @@ import {
   Shield,
   Save,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 
 export default function BotManagementPage() {
@@ -129,7 +130,22 @@ export default function BotManagementPage() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={
+              process.env.NEXT_PUBLIC_BOT_INVITE_URL ||
+              "https://discord.com/oauth2/authorize?client_id=123456789012345678&scope=bot+applications.commands&permissions=8"
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3.5 py-2 rounded-xl bg-[#5865F2]/20 hover:bg-[#5865F2]/30 text-[#8ea1e1] border border-[#5865F2]/40 text-xs font-semibold flex items-center gap-1.5 transition-all"
+            title="Añadir bot a tu servidor de Discord"
+          >
+            <Bot className="w-3.5 h-3.5 text-[#5865F2]" />
+            <span>Invitar a Discord</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
+
           {botStatus === "RUNNING" ? (
             <>
               <button
