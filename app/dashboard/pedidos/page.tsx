@@ -26,28 +26,7 @@ const ORDER_STEPS = [
 ];
 
 export default function MisPedidosPage() {
-  const [orders] = useState([
-    {
-      id: "ord-1",
-      orderNumber: "AVX-2026-0042",
-      productName: "Desarrollo de Bot Discord Avanzado",
-      totalAmountCents: 19900,
-      createdAt: "2026-11-18T10:30:00Z",
-      status: "IN_DEVELOPMENT" as OrderStatus,
-      deliveryEstimatedDate: "2026-12-02",
-      notes: "Integración de tickets, modales y panel web Avenix Control.",
-    },
-    {
-      id: "ord-2",
-      orderNumber: "AVX-2026-0019",
-      productName: "Configuración Servidor Cloud & Dominio SSL",
-      totalAmountCents: 5900,
-      createdAt: "2026-10-12T15:20:00Z",
-      status: "COMPLETED" as OrderStatus,
-      deliveryEstimatedDate: "2026-10-14",
-      notes: "Despliegue y configuración de certificados completados.",
-    },
-  ]);
+  const [orders, setOrders] = useState<any[]>([]);
 
   const getStepProgress = (status: OrderStatus) => {
     switch (status) {
@@ -130,90 +109,121 @@ export default function MisPedidosPage() {
         </Link>
       </div>
 
-      <div className="space-y-6">
-        {orders.map((order) => {
-          const progress = getStepProgress(order.status);
+      {orders.length > 0 ? (
+        <div className="space-y-6">
+          {orders.map((order) => {
+            const progress = getStepProgress(order.status);
 
-          return (
-            <div
-              key={order.id}
-              className="p-6 sm:p-8 rounded-3xl bg-[#111827] border border-slate-800 space-y-6"
-            >
-              {/* Header Info */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-base font-extrabold text-white">
-                      {order.orderNumber}
-                    </span>
-                    {getStatusBadge(order.status)}
-                  </div>
-                  <h3 className="text-base font-bold text-white font-display">
-                    {order.productName}
-                  </h3>
-                </div>
-
-                <div className="text-left sm:text-right">
-                  <span className="text-xl font-extrabold text-white font-display block">
-                    {formatCurrency(order.totalAmountCents)}
-                  </span>
-                  <span className="text-xs text-slate-400">IVA del 21% incluido</span>
-                </div>
-              </div>
-
-              {/* Progress Stepper Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-                  <span>Progreso de ejecución</span>
-                  <span className="text-blue-400">{progress}%</span>
-                </div>
-
-                <div className="w-full h-2.5 bg-[#0B1220] rounded-full overflow-hidden border border-slate-800">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-5 text-[10px] text-slate-400 pt-1 text-center font-medium">
-                  {ORDER_STEPS.map((s, idx) => (
-                    <div
-                      key={s.key}
-                      className={
-                        progress >= ((idx + 1) / 5) * 100 - 10
-                          ? "text-blue-400 font-bold"
-                          : ""
-                      }
-                    >
-                      {s.label}
+            return (
+              <div
+                key={order.id}
+                className="p-6 sm:p-8 rounded-3xl bg-[#111827] border border-slate-800 space-y-6"
+              >
+                {/* Header Info */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-base font-extrabold text-white">
+                        {order.orderNumber}
+                      </span>
+                      {getStatusBadge(order.status)}
                     </div>
-                  ))}
+                    <h3 className="text-base font-bold text-white font-display">
+                      {order.productName}
+                    </h3>
+                  </div>
+
+                  <div className="text-left sm:text-right">
+                    <span className="text-xl font-extrabold text-white font-display block">
+                      {formatCurrency(order.totalAmountCents)}
+                    </span>
+                    <span className="text-xs text-slate-400">IVA del 21% incluido</span>
+                  </div>
+                </div>
+
+                {/* Progress Stepper Bar */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+                    <span>Progreso de ejecución</span>
+                    <span className="text-blue-400">{progress}%</span>
+                  </div>
+
+                  <div className="w-full h-2.5 bg-[#0B1220] rounded-full overflow-hidden border border-slate-800">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 rounded-full"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-5 text-[10px] text-slate-400 pt-1 text-center font-medium">
+                    {ORDER_STEPS.map((s, idx) => (
+                      <div
+                        key={s.key}
+                        className={
+                          progress >= ((idx + 1) / 5) * 100 - 10
+                            ? "text-blue-400 font-bold"
+                            : ""
+                        }
+                      >
+                        {s.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Delivery & Notes Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800/80 text-xs">
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">Fecha de contratación:</span>
+                    <span className="text-slate-300 font-medium">{formatDate(order.createdAt)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">Fecha estimada de entrega:</span>
+                    <span className="text-white font-semibold">
+                      {formatDate(order.deliveryEstimatedDate)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">Notas del equipo:</span>
+                    <span className="text-slate-300">{order.notes}</span>
+                  </div>
                 </div>
               </div>
-
-              {/* Delivery & Notes Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800/80 text-xs">
-                <div>
-                  <span className="text-slate-500 block mb-0.5">Fecha de contratación:</span>
-                  <span className="text-slate-300 font-medium">{formatDate(order.createdAt)}</span>
-                </div>
-
-                <div>
-                  <span className="text-slate-500 block mb-0.5">Fecha estimada de entrega:</span>
-                  <span className="text-white font-semibold">
-                    {formatDate(order.deliveryEstimatedDate)}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-slate-500 block mb-0.5">Notas del equipo:</span>
-                  <span className="text-slate-300">{order.notes}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="max-w-2xl mx-auto py-12 px-6 rounded-2xl bg-[#111827] border border-slate-800 text-center space-y-5">
+          <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+            <Package className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-white font-display">
+              No tienes ningún pedido en curso
+            </h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Cuando solicites un bot a medida, desarrollo web o automatizaciones, podrás seguir el estado paso a paso (Aceptado, En desarrollo, Revisión y Entrega) en este apartado.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              href="/presupuesto"
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
+            >
+              <span>Solicitar presupuesto</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              href="/#tarifas"
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all"
+            >
+              Ver bots estándar
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

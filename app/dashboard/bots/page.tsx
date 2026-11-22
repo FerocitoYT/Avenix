@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Bot,
   Play,
@@ -18,9 +19,12 @@ import {
   Save,
   Loader2,
   ExternalLink,
+  ArrowRight,
+  PlusCircle,
 } from "lucide-react";
 
 export default function BotManagementPage() {
+  const [hasActiveBot, setHasActiveBot] = useState<boolean>(false);
   const [botStatus, setBotStatus] = useState<"RUNNING" | "STOPPED" | "RESTARTING">("RUNNING");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
@@ -40,13 +44,12 @@ export default function BotManagementPage() {
 
   // Simulated live console logs
   const [logs, setLogs] = useState<string[]>([
-    "[2026-11-22 17:55:01] [INFO] [Core] Avenix Bot Framework v4.2.0 initialized.",
+    "[2026-11-22 17:55:01] [INFO] [Core] Avenix Bot Framework initialized.",
     "[2026-11-22 17:55:02] [INFO] [Gateway] Shard 0/0 connecting to Discord Gateway v10...",
-    "[2026-11-22 17:55:03] [INFO] [Database] PostgreSQL connection pool established (2ms ping).",
-    "[2026-11-22 17:55:04] [INFO] [Gateway] Shard 0 connected. Identified as 'Avenix Support #8821'.",
-    "[2026-11-22 17:55:05] [INFO] [Modules] Loaded 14 Slash Commands and 6 Component Modals.",
-    "[2026-11-22 18:00:00] [INFO] [Cron] Automated ticket transcript archiving completed.",
-    "[2026-11-22 18:08:12] [INFO] [HealthCheck] Node eu-node-01 status: OK (RAM: 142MB / 512MB, CPU: 4.2%).",
+    "[2026-11-22 17:55:03] [INFO] [Database] PostgreSQL connection pool established.",
+    "[2026-11-22 17:55:04] [INFO] [Gateway] Shard 0 connected. Identified as 'Avenix Bot'.",
+    "[2026-11-22 17:55:05] [INFO] [Modules] Loaded commands and components.",
+    "[2026-11-22 18:08:12] [INFO] [HealthCheck] Node eu-node-01 status: OK.",
   ]);
 
   const handleAction = async (action: "START" | "STOP" | "RESTART") => {
@@ -97,6 +100,66 @@ export default function BotManagementPage() {
       setTimeout(() => setConfigSavedToast(false), 3000);
     }, 600);
   };
+
+  if (!hasActiveBot) {
+    return (
+      <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
+              Gestión de Bots Discord
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Supervisión de consumo, logs en directo, reinicio y configuración de comandos.
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto py-12 px-6 rounded-2xl bg-[#111827] border border-slate-800 text-center space-y-6">
+          <div className="w-16 h-16 rounded-3xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+            <Bot className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl font-extrabold text-white font-display">
+              No tienes ninguna instancia de bot activa
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
+              Para acceder a la consola interactiva, monitorizar memoria RAM/CPU en tiempo real y gestionar módulos de comandos de tu bot, necesitas activar una suscripción de Avenix Bot o vincular tu bot contratado.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Link
+              href="/#tarifas"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+            >
+              <span>Contratar Avenix Bot (9 €/mes)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              href="/presupuesto"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-all flex items-center justify-center gap-2"
+            >
+              <span>Solicitar Bot a Medida</span>
+            </Link>
+          </div>
+
+          <div className="pt-6 border-t border-slate-800/80">
+            <p className="text-[11px] text-slate-500">
+              ¿Ya contrataste un bot o tienes credenciales de prueba?{" "}
+              <button
+                onClick={() => setHasActiveBot(true)}
+                className="text-blue-400 hover:underline font-semibold"
+              >
+                Simular vista de bot activo
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">

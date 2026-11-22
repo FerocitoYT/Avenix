@@ -38,36 +38,8 @@ interface Ticket {
 }
 
 export default function SoportePage() {
-  const [tickets, setTickets] = useState<Ticket[]>([
-    {
-      id: "tck-1",
-      ticketNumber: "TCK-2026-0031",
-      title: "Consulta sobre nuevo comando de moderación",
-      category: "Bots de Discord",
-      priority: "MEDIUM",
-      status: "OPEN",
-      statusLabel: "Abierto",
-      createdAt: "2026-11-20T14:15:00Z",
-      messages: [
-        {
-          id: "m-1",
-          sender: "Cliente",
-          isStaff: false,
-          content: "Hola, me gustaría saber si podemos añadir un comando /timeout con duraciones personalizadas en el bot.",
-          createdAt: "2026-11-20T14:15:00Z",
-        },
-        {
-          id: "m-2",
-          sender: "Avenix Staff (Soporte)",
-          isStaff: true,
-          content: "¡Hola! Por supuesto, está cubierto dentro de la garantía de tu paquete Bot Avanzado. En breve nuestro equipo técnico desplegará la actualización en tu instancia de eu-node-01.",
-          createdAt: "2026-11-20T14:40:00Z",
-        },
-      ],
-    },
-  ]);
-
-  const [activeTicketId, setActiveTicketId] = useState<string | null>("tck-1");
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [newReply, setNewReply] = useState<string>("");
 
@@ -163,33 +135,39 @@ export default function SoportePage() {
           </h2>
 
           <div className="space-y-2">
-            {tickets.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => setActiveTicketId(t.id)}
-                className={`p-4 rounded-2xl cursor-pointer border transition-all ${
-                  activeTicketId === t.id
-                    ? "bg-[#111827] border-blue-500 shadow-md shadow-blue-500/10"
-                    : "bg-[#111827]/60 border-slate-800 hover:border-slate-700"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="font-mono text-xs font-bold text-blue-400">
-                    {t.ticketNumber}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                    {t.statusLabel}
-                  </span>
-                </div>
+            {tickets.length > 0 ? (
+              tickets.map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => setActiveTicketId(t.id)}
+                  className={`p-4 rounded-2xl cursor-pointer border transition-all ${
+                    activeTicketId === t.id
+                      ? "bg-[#111827] border-blue-500 shadow-md shadow-blue-500/10"
+                      : "bg-[#111827]/60 border-slate-800 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="font-mono text-xs font-bold text-blue-400">
+                      {t.ticketNumber}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                      {t.statusLabel}
+                    </span>
+                  </div>
 
-                <h3 className="text-xs font-bold text-white mb-1 line-clamp-1">{t.title}</h3>
+                  <h3 className="text-xs font-bold text-white mb-1 line-clamp-1">{t.title}</h3>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{t.category}</span>
-                  <span>{formatDate(t.createdAt)}</span>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>{t.category}</span>
+                    <span>{formatDate(t.createdAt)}</span>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="p-4 rounded-2xl bg-[#111827]/60 border border-slate-800 text-center text-xs text-slate-500">
+                No tienes tickets abiertos.
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -273,8 +251,29 @@ export default function SoportePage() {
               </form>
             </div>
           ) : (
-            <div className="rounded-3xl bg-[#111827] border border-slate-800 p-12 text-center text-slate-400">
-              Selecciona un ticket de la lista para ver la conversación.
+            <div className="rounded-3xl bg-[#111827] border border-slate-800 p-12 text-center space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+                <LifeBuoy className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white font-display">
+                  {tickets.length === 0 ? "No has abierto ningún ticket de soporte" : "Selecciona un ticket"}
+                </h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  {tickets.length === 0
+                    ? "Si tienes alguna duda sobre tus bots, desarrollos o facturación, abre un ticket y el equipo de ingenieros te responderá directamente."
+                    : "Elige uno de tus tickets en la columna izquierda para leer el historial y responder."}
+                </p>
+              </div>
+              {tickets.length === 0 && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Abrir ticket ahora</span>
+                </button>
+              )}
             </div>
           )}
         </div>
