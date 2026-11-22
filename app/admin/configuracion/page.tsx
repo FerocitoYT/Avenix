@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Settings,
   ShieldCheck,
@@ -26,34 +26,26 @@ export default function AdminConfiguracionPage() {
     requireEmailVerification: true,
   });
 
-  const [auditLogs] = useState([
-    {
-      id: "log-1",
-      action: "INITIAL_SUPERADMIN_SETUP_COMPLETED",
-      entityType: "USER",
-      user: "Admin Root",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-11-22T17:30:00Z",
-    },
-    {
-      id: "log-2",
-      action: "UPDATE_PRODUCT_PRICING",
-      entityType: "PRODUCT",
-      user: "Admin Root",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-11-22T18:05:00Z",
-    },
-    {
-      id: "log-3",
-      action: "STRIPE_CHECKOUT_SESSION_CREATED",
-      entityType: "ORDER",
-      user: "Carlos Developer",
-      ipAddress: "185.190.x.x",
-      createdAt: "2026-11-22T18:12:00Z",
-    },
-  ]);
-
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
+
+  useEffect(() => {
+    async function loadLogs() {
+      try {
+        const res = await fetch("/api/admin/audit-logs");
+        const data = await res.json();
+        if (data?.logs) {
+          setAuditLogs(data.logs);
+        }
+      } catch (err) {
+        console.error("Error loading real audit logs:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadLogs();
+  }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,21 +191,27 @@ export default function AdminConfiguracionPage() {
           </div>
 
           <div className="space-y-3">
-            {auditLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-4 rounded-2xl bg-[#0B1220] border border-slate-800 text-xs space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-indigo-400 font-bold">{log.action}</span>
-                  <span className="text-[10px] text-slate-500">{formatDateTime(log.createdAt)}</span>
+            {auditLogs.length > 0 ? (
+              auditLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="p-4 rounded-2xl bg-[#0B1220] border border-slate-800 text-xs space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-indigo-400 font-bold">{log.action}</span>
+                    <span className="text-[10px] text-slate-500">{formatDateTime(log.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Usuario: <strong className="text-slate-300">{log.user}</strong></span>
+                    <span className="font-mono text-slate-500">IP: {log.ipAddress}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Usuario: <strong className="text-slate-300">{log.user}</strong></span>
-                  <span className="font-mono text-slate-500">IP: {log.ipAddress}</span>
-                </div>
+              ))
+            ) : (
+              <div className="p-6 rounded-2xl bg-[#0B1220] border border-slate-800 text-center text-xs text-slate-500">
+                {loading ? "Cargando registros de auditoría..." : "No hay registros de auditoría todavía."}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

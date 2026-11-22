@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -15,20 +15,41 @@ import {
   ChevronRight,
   Activity,
   AlertTriangle,
+  Layers,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function AdminDashboardPage() {
-  const [stats] = useState({
-    registeredClients: 18,
-    totalSalesCount: 34,
-    totalInvoicedCents: 489200, // 4.892,00 €
-    mrrCents: 64900, // 649,00 €/mes
-    pendingOrdersCount: 3,
-    activeSubscriptionsCount: 12,
-    openTicketsCount: 2,
-    operationalServicesCount: 15,
+  const [stats, setStats] = useState({
+    registeredClients: 0,
+    totalSalesCount: 0,
+    totalInvoicedCents: 0,
+    mrrCents: 0,
+    pendingOrdersCount: 0,
+    activeSubscriptionsCount: 0,
+    openTicketsCount: 0,
+    operationalServicesCount: 0,
   });
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/admin/overview");
+        const data = await res.json();
+        if (data?.stats) {
+          setStats(data.stats);
+          setRecentActivity(data.recentActivity || []);
+        }
+      } catch (err) {
+        console.error("Error loading real admin stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
 
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">

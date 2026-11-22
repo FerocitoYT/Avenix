@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileCheck2,
   CheckCircle2,
@@ -29,39 +29,32 @@ interface QuoteItem {
 }
 
 export default function AdminPresupuestosPage() {
-  const [quotes, setQuotes] = useState<QuoteItem[]>([
-    {
-      id: "q-1",
-      quoteNumber: "PRES-2026-8812",
-      guestName: "Roberto Gómez",
-      guestEmail: "roberto@comunidadgaming.es",
-      serviceType: "discord_bot",
-      estimatedBudget: "200_500",
-      projectDescription: "Necesitamos un bot de tickets con transcripts HTML, sistema de verificación por captcha y modales de bienvenida.",
-      selectedFeatures: ["Comandos Slash", "Tickets con transcripción", "Base de datos PostgreSQL"],
-      status: "PENDING",
-      createdAt: "2026-11-21T16:00:00Z",
-    },
-    {
-      id: "q-2",
-      quoteNumber: "PRES-2026-5419",
-      guestName: "Marta Soler",
-      guestEmail: "marta@estudiocreativo.com",
-      serviceType: "desarrollo_web",
-      estimatedBudget: "500_1000",
-      projectDescription: "Rediseño completo de página web corporativa con portafolio de proyectos y formulario de contacto con Next.js.",
-      selectedFeatures: ["Next.js App Router", "SEO técnico", "Panel administrativo"],
-      status: "PROPOSAL_SENT",
-      proposedPriceCents: 49900,
-      adminNotes: "Incluye 5 secciones completas, hosting el primer año y panel a medida.",
-      createdAt: "2026-11-19T11:20:00Z",
-    },
-  ]);
-
-  const [activeQuoteId, setActiveQuoteId] = useState<string | null>("q-1");
+  const [quotes, setQuotes] = useState<QuoteItem[]>([]);
+  const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
   const [proposedPrice, setProposedPrice] = useState<number>(19900);
   const [notes, setNotes] = useState<string>("");
+  const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadQuotes() {
+      try {
+        const res = await fetch("/api/admin/quotes");
+        const data = await res.json();
+        if (data?.quotes) {
+          setQuotes(data.quotes);
+          if (data.quotes.length > 0) {
+            setActiveQuoteId(data.quotes[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading real quotes:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadQuotes();
+  }, []);
 
   const activeQuote = quotes.find((q) => q.id === activeQuoteId);
 
@@ -121,50 +114,56 @@ export default function AdminPresupuestosPage() {
           </h2>
 
           <div className="space-y-2">
-            {quotes.map((q) => (
-              <div
-                key={q.id}
-                onClick={() => {
-                  setActiveQuoteId(q.id);
-                  if (q.proposedPriceCents) setProposedPrice(q.proposedPriceCents);
-                  if (q.adminNotes) setNotes(q.adminNotes);
-                }}
-                className={`p-4 rounded-2xl cursor-pointer border transition-all ${
-                  activeQuoteId === q.id
-                    ? "bg-[#0B1220] border-indigo-500 shadow-md shadow-indigo-500/10"
-                    : "bg-[#0B1220]/60 border-slate-800 hover:border-slate-700"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-mono text-xs font-bold text-indigo-400">
-                    {q.quoteNumber}
-                  </span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      q.status === "PENDING"
-                        ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+            {quotes.length > 0 ? (
+              quotes.map((q) => (
+                <div
+                  key={q.id}
+                  onClick={() => {
+                    setActiveQuoteId(q.id);
+                    if (q.proposedPriceCents) setProposedPrice(q.proposedPriceCents);
+                    if (q.adminNotes) setNotes(q.adminNotes);
+                  }}
+                  className={`p-4 rounded-2xl cursor-pointer border transition-all ${
+                    activeQuoteId === q.id
+                      ? "bg-[#0B1220] border-indigo-500 shadow-md shadow-indigo-500/10"
+                      : "bg-[#0B1220]/60 border-slate-800 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-mono text-xs font-bold text-indigo-400">
+                      {q.quoteNumber}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        q.status === "PENDING"
+                          ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                          : q.status === "PROPOSAL_SENT"
+                          ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                          : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                      }`}
+                    >
+                      {q.status === "PENDING"
+                        ? "Pendiente"
                         : q.status === "PROPOSAL_SENT"
-                        ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
-                        : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                    }`}
-                  >
-                    {q.status === "PENDING"
-                      ? "Pendiente"
-                      : q.status === "PROPOSAL_SENT"
-                      ? "Oferta Enviada"
-                      : "Aceptado"}
-                  </span>
-                </div>
+                        ? "Oferta Enviada"
+                        : "Aceptado"}
+                    </span>
+                  </div>
 
-                <p className="text-xs font-bold text-white mb-0.5">{q.guestName}</p>
-                <p className="text-[11px] text-slate-400 truncate">{q.guestEmail}</p>
+                  <p className="text-xs font-bold text-white mb-0.5">{q.guestName}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{q.guestEmail}</p>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                  <span>{q.serviceType}</span>
-                  <span>{formatDate(q.createdAt)}</span>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
+                    <span>{q.serviceType}</span>
+                    <span>{formatDate(q.createdAt)}</span>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="p-4 rounded-2xl bg-[#0B1220]/60 border border-slate-800 text-center text-xs text-slate-500">
+                {loading ? "Cargando presupuestos..." : "No hay presupuestos recibidos."}
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -275,7 +274,7 @@ export default function AdminPresupuestosPage() {
             </div>
           ) : (
             <div className="p-12 text-center text-slate-500 rounded-3xl bg-[#0B1220] border border-slate-800">
-              Selecciona una solicitud para emitir la propuesta.
+              {quotes.length === 0 ? "No hay solicitudes de presupuesto recibidas todavía." : "Selecciona una solicitud para emitir la propuesta."}
             </div>
           )}
         </div>

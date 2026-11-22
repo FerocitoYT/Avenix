@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LifeBuoy,
   Send,
@@ -33,39 +33,30 @@ interface StaffTicket {
 }
 
 export default function AdminSoportePage() {
-  const [tickets, setTickets] = useState<StaffTicket[]>([
-    {
-      id: "tck-1",
-      ticketNumber: "TCK-2026-0031",
-      clientName: "Carlos Developer",
-      clientEmail: "carlos@comunidad.es",
-      title: "Consulta sobre nuevo comando de moderación",
-      category: "Bots de Discord",
-      priority: "MEDIUM",
-      status: "OPEN",
-      assignedStaff: "Soporte Nivel 2",
-      createdAt: "2026-11-20T14:15:00Z",
-      messages: [
-        {
-          id: "m-1",
-          sender: "Carlos Developer",
-          isStaff: false,
-          content: "Hola, me gustaría saber si podemos añadir un comando /timeout con duraciones personalizadas en el bot.",
-          createdAt: "2026-11-20T14:15:00Z",
-        },
-        {
-          id: "m-2",
-          sender: "Avenix Staff (Tú)",
-          isStaff: true,
-          content: "¡Hola Carlos! Está cubierto dentro de la garantía de tu paquete Bot Avanzado. En breve nuestro equipo técnico desplegará la actualización en tu instancia.",
-          createdAt: "2026-11-20T14:40:00Z",
-        },
-      ],
-    },
-  ]);
-
-  const [activeId, setActiveId] = useState<string>("tck-1");
+  const [tickets, setTickets] = useState<StaffTicket[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTickets() {
+      try {
+        const res = await fetch("/api/admin/tickets");
+        const data = await res.json();
+        if (data?.tickets) {
+          setTickets(data.tickets);
+          if (data.tickets.length > 0) {
+            setActiveId(data.tickets[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading real tickets:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTickets();
+  }, []);
 
   const activeTicket = tickets.find((t) => t.id === activeId);
 
@@ -117,34 +108,40 @@ export default function AdminSoportePage() {
           </h2>
 
           <div className="space-y-2">
-            {tickets.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => setActiveId(t.id)}
-                className={`p-4 rounded-2xl cursor-pointer border transition-all ${
-                  activeId === t.id
-                    ? "bg-[#0B1220] border-indigo-500 shadow-md shadow-indigo-500/10"
-                    : "bg-[#0B1220]/60 border-slate-800 hover:border-slate-700"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-mono text-xs font-bold text-indigo-400">
-                    {t.ticketNumber}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                    {t.status}
-                  </span>
-                </div>
+            {tickets.length > 0 ? (
+              tickets.map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => setActiveId(t.id)}
+                  className={`p-4 rounded-2xl cursor-pointer border transition-all ${
+                    activeId === t.id
+                      ? "bg-[#0B1220] border-indigo-500 shadow-md shadow-indigo-500/10"
+                      : "bg-[#0B1220]/60 border-slate-800 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-mono text-xs font-bold text-indigo-400">
+                      {t.ticketNumber}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                      {t.status}
+                    </span>
+                  </div>
 
-                <p className="text-xs font-bold text-white mb-0.5">{t.title}</p>
-                <p className="text-[11px] text-slate-400">{t.clientName}</p>
+                  <p className="text-xs font-bold text-white mb-0.5">{t.title}</p>
+                  <p className="text-[11px] text-slate-400">{t.clientName}</p>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                  <span>Asignado: {t.assignedStaff}</span>
-                  <span>{formatDate(t.createdAt)}</span>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
+                    <span>Asignado: {t.assignedStaff}</span>
+                    <span>{formatDate(t.createdAt)}</span>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="p-4 rounded-2xl bg-[#0B1220]/60 border border-slate-800 text-center text-xs text-slate-500">
+                {loading ? "Cargando tickets..." : "No hay tickets de soporte abiertos."}
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -230,7 +227,7 @@ export default function AdminSoportePage() {
             </div>
           ) : (
             <div className="p-12 text-center text-slate-500 rounded-3xl bg-[#0B1220] border border-slate-800">
-              Selecciona un ticket.
+              {tickets.length === 0 ? "No hay tickets de soporte abiertos actualmente." : "Selecciona un ticket de la lista para responder."}
             </div>
           )}
         </div>

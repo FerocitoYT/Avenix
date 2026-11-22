@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Server,
   Bot,
@@ -21,51 +21,34 @@ export default function AdminInfraestructuraPage() {
       name: "eu-node-01.avenix.dev (Frankfurt)",
       ip: "185.190.x.x",
       status: "HEALTHY",
-      containersActive: 12,
-      ramAllocatedMb: 6144,
+      containersActive: 0,
+      ramAllocatedMb: 512,
       ramTotalMb: 16384,
-      cpuPercent: 14.5,
-      uptimeDays: 148,
-    },
-    {
-      id: "node-mad-01",
-      name: "es-node-01.avenix.dev (Madrid)",
-      ip: "194.38.x.x",
-      status: "HEALTHY",
-      containersActive: 6,
-      ramAllocatedMb: 3072,
-      ramTotalMb: 16384,
-      cpuPercent: 8.2,
-      uptimeDays: 92,
+      cpuPercent: 2.1,
+      uptimeDays: 1,
     },
   ]);
 
-  const [instances, setInstances] = useState([
-    {
-      id: "inst-1",
-      botName: "Avenix Moderation #8821",
-      clientEmail: "carlos@comunidad.es",
-      node: "eu-node-01.avenix.dev",
-      status: "RUNNING",
-      ramMb: 142,
-      ramLimitMb: 512,
-      cpuPercent: 4.2,
-      pingMs: 18,
-    },
-    {
-      id: "inst-2",
-      botName: "Tickets & Verificación #4012",
-      clientEmail: "laura@tiendavirtual.com",
-      node: "eu-node-01.avenix.dev",
-      status: "RUNNING",
-      ramMb: 98,
-      ramLimitMb: 512,
-      cpuPercent: 1.8,
-      pingMs: 21,
-    },
-  ]);
-
+  const [instances, setInstances] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadInstances() {
+      try {
+        const res = await fetch("/api/admin/infrastructure");
+        const data = await res.json();
+        if (data?.instances) {
+          setInstances(data.instances);
+        }
+      } catch (err) {
+        console.error("Error loading real infrastructure:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInstances();
+  }, []);
 
   const restartInstance = (id: string, name: string) => {
     setToast(`Orden de reinicio emitida para ${name}.`);
@@ -151,31 +134,39 @@ export default function AdminInfraestructuraPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
-              {instances.map((inst) => (
-                <tr key={inst.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="py-3.5 pl-2 font-bold text-white">{inst.botName}</td>
-                  <td className="py-3.5 text-slate-400">{inst.clientEmail}</td>
-                  <td className="py-3.5 text-indigo-400 font-mono text-[11px]">{inst.node}</td>
-                  <td className="py-3.5 text-slate-300">
-                    {inst.ramMb} MB / {inst.ramLimitMb} MB
-                  </td>
-                  <td className="py-3.5 text-slate-300">{inst.cpuPercent}%</td>
-                  <td className="py-3.5 text-emerald-400 font-mono">{inst.pingMs} ms</td>
-                  <td className="py-3.5">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      {inst.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 pr-2 text-right">
-                    <button
-                      onClick={() => restartInstance(inst.id, inst.botName)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-semibold border border-slate-800"
-                    >
-                      Reiniciar Contenedor
-                    </button>
+              {instances.length > 0 ? (
+                instances.map((inst) => (
+                  <tr key={inst.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="py-3.5 pl-2 font-bold text-white">{inst.botName}</td>
+                    <td className="py-3.5 text-slate-400">{inst.clientEmail}</td>
+                    <td className="py-3.5 text-indigo-400 font-mono text-[11px]">{inst.node}</td>
+                    <td className="py-3.5 text-slate-300">
+                      {inst.ramMb} MB / {inst.ramLimitMb} MB
+                    </td>
+                    <td className="py-3.5 text-slate-300">{inst.cpuPercent}%</td>
+                    <td className="py-3.5 text-emerald-400 font-mono">{inst.pingMs} ms</td>
+                    <td className="py-3.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {inst.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-2 text-right">
+                      <button
+                        onClick={() => restartInstance(inst.id, inst.botName)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-semibold border border-slate-800"
+                      >
+                        Reiniciar Contenedor
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-500">
+                    {loading ? "Comprobando contenedores en servidores..." : "No hay contenedores de bots desplegados actualmente en la infraestructura."}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

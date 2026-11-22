@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Receipt,
   Download,
@@ -29,41 +29,28 @@ interface InvoiceRecord {
 }
 
 export default function AdminFacturacionPage() {
-  const [invoices, setInvoices] = useState<InvoiceRecord[]>([
-    {
-      id: "inv-1",
-      invoiceNumber: "FAC-2026-0042",
-      clientName: "Carlos Developer",
-      clientTaxId: "B12345678",
-      concept: "Desarrollo de Bot Discord Avanzado",
-      baseAmountCents: 16446,
-      vatAmountCents: 3454,
-      totalAmountCents: 19900,
-      status: "PAID",
-      paymentProvider: "STRIPE",
-      stripeVerified: true,
-      createdAt: "2026-11-18",
-    },
-    {
-      id: "inv-2",
-      invoiceNumber: "FAC-2026-0043",
-      clientName: "Laura Martínez",
-      clientTaxId: "B98765432",
-      concept: "Tienda Online Next.js con Stripe",
-      baseAmountCents: 41240,
-      vatAmountCents: 8660,
-      totalAmountCents: 49900,
-      status: "ISSUED",
-      paymentProvider: "STRIPE",
-      stripeVerified: false,
-      createdAt: "2026-11-20",
-    },
-  ]);
-
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function loadInvoices() {
+      try {
+        const res = await fetch("/api/admin/invoices");
+        const data = await res.json();
+        if (data?.invoices) {
+          setInvoices(data.invoices);
+        }
+      } catch (err) {
+        console.error("Error loading real invoices:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInvoices();
+  }, []);
+
   const handleVerifyStripe = async (id: string) => {
-    // Verifies against Stripe API / Webhooks
     setInvoices((prev) =>
       prev.map((inv) =>
         inv.id === id
@@ -111,55 +98,63 @@ export default function AdminFacturacionPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="py-3.5 pl-2 font-mono font-bold text-indigo-400">
-                    {inv.invoiceNumber}
-                  </td>
-                  <td className="py-3.5">
-                    <span className="font-bold text-white block">{inv.clientName}</span>
-                    <span className="text-[10px] text-slate-400">{inv.clientTaxId || "Sin NIF"}</span>
-                  </td>
-                  <td className="py-3.5 text-slate-300 font-medium">{inv.concept}</td>
-                  <td className="py-3.5 text-slate-400">{formatCurrency(inv.baseAmountCents)}</td>
-                  <td className="py-3.5 text-slate-400">{formatCurrency(inv.vatAmountCents)}</td>
-                  <td className="py-3.5 font-bold text-white font-display">
-                    {formatCurrency(inv.totalAmountCents)}
-                  </td>
-                  <td className="py-3.5">
-                    {inv.stripeVerified ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">
-                        <ShieldCheck className="w-3 h-3" />
-                        Stripe Verificado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase">
-                        <Clock className="w-3 h-3" />
-                        Pendiente Servidor
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 pr-2 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {!inv.stripeVerified && (
-                        <button
-                          onClick={() => handleVerifyStripe(inv.id)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold"
-                        >
-                          Verificar Stripe
-                        </button>
+              {invoices.length > 0 ? (
+                invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="py-3.5 pl-2 font-mono font-bold text-indigo-400">
+                      {inv.invoiceNumber}
+                    </td>
+                    <td className="py-3.5">
+                      <span className="font-bold text-white block">{inv.clientName}</span>
+                      <span className="text-[10px] text-slate-400">{inv.clientTaxId || "Sin NIF"}</span>
+                    </td>
+                    <td className="py-3.5 text-slate-300 font-medium">{inv.concept}</td>
+                    <td className="py-3.5 text-slate-400">{formatCurrency(inv.baseAmountCents)}</td>
+                    <td className="py-3.5 text-slate-400">{formatCurrency(inv.vatAmountCents)}</td>
+                    <td className="py-3.5 font-bold text-white font-display">
+                      {formatCurrency(inv.totalAmountCents)}
+                    </td>
+                    <td className="py-3.5">
+                      {inv.stripeVerified ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">
+                          <ShieldCheck className="w-3 h-3" />
+                          Stripe Verificado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase">
+                          <Clock className="w-3 h-3" />
+                          Pendiente Servidor
+                        </span>
                       )}
-                      <button
-                        onClick={() => alert(`Descargando factura legal oficial ${inv.invoiceNumber}`)}
-                        className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800"
-                        title="Descargar PDF"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    </td>
+                    <td className="py-3.5 pr-2 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {!inv.stripeVerified && (
+                          <button
+                            onClick={() => handleVerifyStripe(inv.id)}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold"
+                          >
+                            Verificar Stripe
+                          </button>
+                        )}
+                        <button
+                          onClick={() => alert(`Descargando factura legal oficial ${inv.invoiceNumber}`)}
+                          className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800"
+                          title="Descargar PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-500">
+                    {loading ? "Cargando facturas de la base de datos..." : "No hay facturas emitidas todavía."}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

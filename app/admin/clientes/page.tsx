@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Search,
@@ -26,40 +26,26 @@ interface ClientRecord {
 
 export default function AdminClientesPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState<ClientRecord[]>([
-    {
-      id: "cli-1",
-      name: "Superadministrador Principal",
-      email: "admin@avenix.dev",
-      role: "ADMIN",
-      discordUsername: "avenix_root",
-      companyName: "Avenix",
-      isActive: true,
-      registeredAt: "2026-11-01",
-    },
-    {
-      id: "cli-2",
-      name: "Carlos Developer",
-      email: "carlos@comunidad.es",
-      role: "CLIENT",
-      discordUsername: "carlos_gaming",
-      companyName: "Gaming Zone Server",
-      isActive: true,
-      registeredAt: "2026-11-12",
-    },
-    {
-      id: "cli-3",
-      name: "Laura Martínez",
-      email: "laura@tiendavirtual.com",
-      role: "CLIENT",
-      discordUsername: "laura_m",
-      companyName: "E-Commerce Corp",
-      isActive: true,
-      registeredAt: "2026-11-15",
-    },
-  ]);
-
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadClients() {
+      try {
+        const res = await fetch("/api/admin/clients");
+        const data = await res.json();
+        if (data?.clients) {
+          setClients(data.clients);
+        }
+      } catch (err) {
+        console.error("Error loading real clients:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadClients();
+  }, []);
 
   const filteredClients = clients.filter(
     (c) =>
@@ -68,19 +54,43 @@ export default function AdminClientesPage() {
       c.discordUsername?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const toggleClientActive = (id: string) => {
+  const toggleClientActive = async (id: string) => {
+    const target = clients.find((c) => c.id === id);
+    if (!target) return;
+    const newActive = !target.isActive;
+
     setClients((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c))
+      prev.map((c) => (c.id === id ? { ...c, isActive: newActive } : c))
     );
-    setToastMessage("Estado de cliente actualizado.");
+
+    try {
+      await fetch("/api/admin/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, isActive: newActive }),
+      });
+      setToastMessage("Estado de cliente actualizado en la base de datos.");
+    } catch {
+      setToastMessage("Error al guardar cambios.");
+    }
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const changeRole = (id: string, newRole: "CLIENT" | "EMPLOYEE" | "ADMIN") => {
+  const changeRole = async (id: string, newRole: "CLIENT" | "EMPLOYEE" | "ADMIN") => {
     setClients((prev) =>
       prev.map((c) => (c.id === id ? { ...c, role: newRole } : c))
     );
-    setToastMessage(`Rol actualizado a ${newRole}.`);
+
+    try {
+      await fetch("/api/admin/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, role: newRole }),
+      });
+      setToastMessage(`Rol actualizado a ${newRole} en la base de datos.`);
+    } catch {
+      setToastMessage("Error al actualizar rol.");
+    }
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -133,53 +143,61 @@ export default function AdminClientesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
-              {filteredClients.map((client) => (
-                <tr key={client.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="py-3.5 pl-2">
-                    <span className="font-bold text-white block">{client.name}</span>
-                    {client.discordUsername && (
-                      <span className="text-[10px] text-indigo-400 font-mono">
-                        @{client.discordUsername}
+              {filteredClients.length > 0 ? (
+                filteredClients.map((client) => (
+                  <tr key={client.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="py-3.5 pl-2">
+                      <span className="font-bold text-white block">{client.name}</span>
+                      {client.discordUsername && (
+                        <span className="text-[10px] text-indigo-400 font-mono">
+                          @{client.discordUsername}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 text-slate-300">{client.email}</td>
+                    <td className="py-3.5 text-slate-400">
+                      {client.companyName || "No especificada"}
+                    </td>
+                    <td className="py-3.5">
+                      <select
+                        value={client.role}
+                        onChange={(e) => changeRole(client.id, e.target.value as any)}
+                        className="px-2.5 py-1 rounded-lg bg-[#111827] border border-slate-700 text-white text-[11px] font-semibold focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="CLIENT">CLIENTE</option>
+                        <option value="EMPLOYEE">EMPLEADO</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </td>
+                    <td className="py-3.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          client.isActive
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        }`}
+                      >
+                        {client.isActive ? "Activo" : "Desactivado"}
                       </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 text-slate-300">{client.email}</td>
-                  <td className="py-3.5 text-slate-400">
-                    {client.companyName || "No especificada"}
-                  </td>
-                  <td className="py-3.5">
-                    <select
-                      value={client.role}
-                      onChange={(e) => changeRole(client.id, e.target.value as any)}
-                      className="px-2.5 py-1 rounded-lg bg-[#111827] border border-slate-700 text-white text-[11px] font-semibold focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="CLIENT">CLIENTE</option>
-                      <option value="EMPLOYEE">EMPLEADO</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
-                  </td>
-                  <td className="py-3.5">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        client.isActive
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-red-500/10 text-red-400 border border-red-500/20"
-                      }`}
-                    >
-                      {client.isActive ? "Activo" : "Desactivado"}
-                    </span>
-                  </td>
-                  <td className="py-3.5 text-slate-500">{formatDate(client.registeredAt)}</td>
-                  <td className="py-3.5 pr-2 text-right">
-                    <button
-                      onClick={() => toggleClientActive(client.id)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-semibold border border-slate-800"
-                    >
-                      {client.isActive ? "Desactivar" : "Activar"}
-                    </button>
+                    </td>
+                    <td className="py-3.5 text-slate-500">{formatDate(client.registeredAt)}</td>
+                    <td className="py-3.5 pr-2 text-right">
+                      <button
+                        onClick={() => toggleClientActive(client.id)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-semibold border border-slate-800"
+                      >
+                        {client.isActive ? "Desactivar" : "Activar"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-500">
+                    {loading ? "Cargando clientes de la base de datos..." : "No se encontraron clientes registrados."}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
