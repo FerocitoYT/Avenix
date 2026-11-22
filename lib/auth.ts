@@ -43,14 +43,19 @@ export function verifyToken(token: string): SessionUser | null {
 }
 
 export async function setSessionCookie(token: string) {
-  const cookieStore = cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
+  try {
+    const cookieStore = cookies();
+    cookieStore.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+  } catch (e) {
+    // May happen in certain serverless environments where response cookies are used
+    console.warn("Cookie set note:", e);
+  }
 }
 
 export async function clearSessionCookie() {

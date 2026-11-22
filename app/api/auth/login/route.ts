@@ -65,10 +65,20 @@ export async function POST(req: Request) {
       });
     } catch {}
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: sessionPayload,
     });
+
+    response.cookies.set("avenix_session_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return response;
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return NextResponse.json(
