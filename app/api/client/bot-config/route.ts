@@ -7,8 +7,8 @@ import { encryptSecret } from "@/lib/crypto";
 export const dynamic = "force-dynamic";
 const configSchema = z.object({
   serviceId: z.string().min(1),
-  applicationId: z.string().regex(/^\\d{17,20}$/, "ID de aplicación no válido"),
-  guildId: z.string().regex(/^\\d{17,20}$/, "ID de servidor no válido").optional().or(z.literal("")),
+  applicationId: z.string().regex(/^\d{17,20}$/, "ID de aplicación no válido"),
+  guildId: z.string().regex(/^\d{17,20}$/, "ID de servidor no válido").optional().or(z.literal("")),
   botToken: z.string().min(30).max(300).optional().or(z.literal("")),
 });
 const active = (s: {status:string;currentPeriodEnd:Date}) =>
@@ -38,7 +38,7 @@ export async function POST(req:Request) {
   const user=await getCurrentUser();
   if(!user) return NextResponse.json({error:"No autorizado"},{status:401});
   const parsed=configSchema.safeParse(await req.json().catch(()=>null));
-  if(!parsed.success) return NextResponse.json({error:"Datos de configuración inválidos"},{status:400});
+  if(!parsed.success) return NextResponse.json({error:"Datos de configuración inválidos",fields:parsed.error.flatten().fieldErrors},{status:400});
   const {serviceId,applicationId,guildId,botToken}=parsed.data;
   const service=await prisma.service.findFirst({
     where:{id:serviceId,userId:user.id,serviceType:"DISCORD_BOT"},
