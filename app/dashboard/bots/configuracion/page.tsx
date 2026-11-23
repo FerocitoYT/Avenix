@@ -36,7 +36,7 @@ export default function ConfiguracionBot() {
    try {
      const res=await fetch("/api/client/bot-config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({serviceId:selected,applicationId,guildId,botToken})});
      const data=await res.json();
-     if(!res.ok) throw new Error(data.error||"No se pudo guardar");
+     if(!res.ok) { const details = data.fields && typeof data.fields === "object" ? Object.values(data.fields as Record<string, string[]>).flat().filter(Boolean).join(". ") : ""; throw new Error(details || data.error || "No se pudo guardar"); }
      setMessage(data.message);setBotToken("");
      await load();
    }catch(e){setError(e instanceof Error?e.message:"Error al guardar");}
