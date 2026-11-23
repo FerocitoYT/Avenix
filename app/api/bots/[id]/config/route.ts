@@ -7,7 +7,7 @@ import { encryptSecret } from "@/lib/crypto";
 export const dynamic = "force-dynamic";
 const schema = z.object({
   clientId: z.string().regex(/^\d{17,22}$/),
-  guildId: z.string().regex(/^\d{17,22}$/).optional().or(z.literal("")),
+  guildId: z.string().regex(/^\d{17,22}$/),
   token: z.string().min(20).max(300).optional().or(z.literal("")),
 });
 
@@ -36,8 +36,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const { clientId, guildId, token } = parsed.data;
   if (token && !process.env.ENCRYPTION_MASTER_KEY) return NextResponse.json({ error: "Falta ENCRYPTION_MASTER_KEY en el servidor" }, { status: 503 });
   await prisma.$transaction(async tx => {
-    await tx.botInstance.update({ where: { id: params.id }, data: { botClientId: clientId, guildId: guildId || null, status: "STOPPED" } });
+    await tx.botInstance.update({ where: { id: params.id }, data: { botClientId: clientId, guildId, status: "RESTARTING" } });
     await tx.botConfiguration.upsert({ where: { botInstanceId: params.id }, create: { botInstanceId: params.id, ...(token ? { tokenSecretRef: encryptSecret(token) } : {}) }, update: token ? { tokenSecretRef: encryptSecret(token) } : {} });
   });
-  return NextResponse.json({ success: true, message: "Configuración guardada. El bot permanece detenido hasta que el host confirme su inicio." });
+  return NextResponse.json({ success: true, status: "RESTARTING", message: "Configuración guardada. Inicio solicitado; Discloud confirmará cuando el bot se conecte." });
 }
