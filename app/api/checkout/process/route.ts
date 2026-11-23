@@ -13,7 +13,7 @@ const checkoutSchema = z.object({
   customerEmail: z.string().email("Correo electrónico no válido"),
   companyName: z.string().optional(),
   taxId: z.string().optional(),
-  paymentMethod: z.enum(["STRIPE", "DIRECT"]).default("DIRECT"),
+  paymentMethod: z.enum(["STRIPE", "PAYPAL"]),
   notes: z.string().optional(),
 });
 
@@ -26,7 +26,6 @@ export async function POST(req: Request) {
 
     // 1. Identify or create User
     let currentUser = await getCurrentUser();
-    let isNewUser = false;
     let token = "";
 
     if (!currentUser) {
@@ -45,7 +44,6 @@ export async function POST(req: Request) {
             isActive: true,
           },
         });
-        isNewUser = true;
       }
 
       currentUser = {
@@ -65,7 +63,6 @@ export async function POST(req: Request) {
     let selectedPrice: any = null;
     let selectedProduct: any = null;
 
-    // Search in catalog
     for (const prod of OFFICIAL_CATALOG) {
       const p = prod.prices.find((pr) => pr.id === validated.planId);
       if (p) {
@@ -75,7 +72,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fallback defaults for bot subscriptions if plan id is slug-based
+    // Fallbacks for standard bot plans
     if (!selectedPrice) {
       if (validated.planId === "bot_mensual_9" || validated.planId === "price-bot-monthly") {
         selectedPrice = {
@@ -89,7 +86,7 @@ export async function POST(req: Request) {
         };
         selectedProduct = {
           id: "prod-bot-subscription",
-          name: "Avenix Bot Multiuso (Suscripción)",
+          name: "Avenix Bot Multiuso",
           category: "DISCORD_BOT",
         };
       } else if (validated.planId === "bot_anual_70" || validated.planId === "price-bot-annual") {
@@ -104,7 +101,7 @@ export async function POST(req: Request) {
         };
         selectedProduct = {
           id: "prod-bot-subscription",
-          name: "Avenix Bot Multiuso (Suscripción)",
+          name: "Avenix Bot Multiuso",
           category: "DISCORD_BOT",
         };
       } else {
@@ -120,12 +117,53 @@ export async function POST(req: Request) {
     const baseAmountCents = Math.round(totalAmountCents / (1 + vatRate / 100));
     const vatAmountCents = totalAmountCents - baseAmountCents;
 
-    // 3. Handle Stripe Payment if configured and selected
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const isStripeReady = stripeKey && !stripeKey.includes("placeholder");
+    const year = new Date().getFullYear();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `AVX-${year}-${randomSuffix}`;
+    const invoiceNumber = `FAC-${year}-${randomSuffix}`;
 
-    if (validated.paymentMethod === "STRIPE" && isStripeReady) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // 3. Create Pending Order in Neon Database
+    // Note: The order stays PENDING and will NOT be activated until Stripe Webhook or PayPal IPN confirms payment!
+    const order = await prisma.order.create({
+      data: {
+        orderNumber,
+        userId: currentUser.id,
+        status: "PENDING",
+        totalAmountCents,
+        currency: "EUR",
+        notes: `Pendiente de confirmación de pago vía ${validated.paymentMethod}. ${validated.notes || ""}`.trim(),
+      },
+    });
+
+    // 4. Create Initial Invoice (status: ISSUED / Unpaid)
+    await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        userId: currentUser.id,
+        orderId: order.id,
+        amountCents: baseAmountCents,
+        vatAmountCents,
+        totalAmountCents,
+        status: "ISSUED",
+        dueDate: new Date(),
+        currency: "EUR",
+      },
+    });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    // 5. Route to Gateway (Stripe or PayPal)
+    if (validated.paymentMethod === "STRIPE") {
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey || stripeKey.includes("placeholder")) {
+        return NextResponse.json(
+          {
+            error:
+              "La pasarela de Stripe no está configurada aún en las variables de entorno del servidor. Por favor, configura STRIPE_SECRET_KEY o utiliza PayPal.",
+          },
+          { status: 400 }
+        );
+      }
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -137,7 +175,7 @@ export async function POST(req: Request) {
               currency: "eur",
               product_data: {
                 name: `${selectedProduct.name} — ${selectedPrice.name}`,
-                description: "Servicio oficial Avenix con soporte y panel Avenix Control incluido.",
+                description: `Servicio oficial Avenix con soporte continuo. Ref: ${orderNumber}`,
               },
               unit_amount: totalAmountCents,
               ...(selectedPrice.billingType === "RECURRING"
@@ -147,9 +185,11 @@ export async function POST(req: Request) {
             quantity: 1,
           },
         ],
-        success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        success_url: `${baseUrl}/checkout/success?order=${orderNumber}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/checkout?plan=${validated.planId}&cancelled=true`,
         metadata: {
+          orderId: order.id,
+          orderNumber,
           userId: currentUser.id,
           priceId: selectedPrice.id,
           productName: selectedProduct.name,
@@ -159,6 +199,7 @@ export async function POST(req: Request) {
 
       const response = NextResponse.json({
         success: true,
+        orderNumber,
         redirectUrl: session.url,
       });
 
@@ -175,153 +216,65 @@ export async function POST(req: Request) {
       return response;
     }
 
-    // 4. Direct Confirmed Order & Service Provisioning (Real DB records)
-    const year = new Date().getFullYear();
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = `AVX-${year}-${randomSuffix}`;
-    const invoiceNumber = `FAC-${year}-${randomSuffix}`;
+    if (validated.paymentMethod === "PAYPAL") {
+      const isSandbox =
+        process.env.PAYPAL_ENV === "sandbox" ||
+        process.env.NODE_ENV !== "production";
 
-    // Create Order
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: currentUser.id,
-        status: "ACCEPTED",
-        totalAmountCents,
-        currency: "EUR",
-        notes: validated.notes || "Contratación directa procesada mediante pasarela Avenix Checkout",
-      },
-    });
+      const paypalBase = isSandbox
+        ? "https://www.sandbox.paypal.com/cgi-bin/webscr"
+        : "https://www.paypal.com/cgi-bin/webscr";
 
-    // Create Invoice
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        userId: currentUser.id,
-        orderId: order.id,
-        amountCents: baseAmountCents,
-        vatAmountCents,
-        totalAmountCents,
-        status: "PAID",
-        paidAt: new Date(),
-        dueDate: new Date(),
-        currency: "EUR",
-      },
-    });
+      const receiverEmail =
+        process.env.PAYPAL_RECEIVER_EMAIL ||
+        process.env.PAYPAL_EMAIL ||
+        "pagos@avenix.dev";
 
-    // If it's a bot product, provision Service & BotInstance
-    if (selectedProduct.category === "DISCORD_BOT") {
-      const serviceIdentifier = `AVX-BOT-${randomSuffix}`;
-      const renewalDate = new Date();
-      if (selectedPrice.interval === "YEAR") {
-        renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-      } else {
-        renewalDate.setMonth(renewalDate.getMonth() + 1);
-      }
-
-      const service = await prisma.service.create({
-        data: {
-          userId: currentUser.id,
+      const paypalParams = new URLSearchParams({
+        cmd: "_xclick",
+        business: receiverEmail,
+        item_name: `${selectedProduct.name} - ${selectedPrice.name}`,
+        item_number: orderNumber,
+        amount: (totalAmountCents / 100).toFixed(2),
+        currency_code: "EUR",
+        no_shipping: "1",
+        custom: JSON.stringify({
           orderId: order.id,
-          name: `Avenix Bot (${selectedPrice.name})`,
-          serviceType: "DISCORD_BOT",
-          status: "ACTIVE",
-          planName: selectedPrice.name,
-          renewalDate,
-          monthlyCostCents: selectedPrice.priceCents,
-        },
+          userId: currentUser.id,
+          orderNumber,
+        }),
+        notify_url: `${baseUrl}/api/webhooks/paypal`,
+        return: `${baseUrl}/checkout/success?order=${orderNumber}&gateway=paypal`,
+        cancel_return: `${baseUrl}/checkout?plan=${validated.planId}&cancelled=true`,
+        rm: "2",
+        charset: "utf-8",
       });
 
-      // Provision active BotInstance
-      const botInst = await prisma.botInstance.create({
-        data: {
-          serviceId: service.id,
-          name: `Avenix Bot #${randomSuffix}`,
-          status: "RUNNING",
-          nodeHost: "eu-node-01.avenix.dev",
-          memoryLimitMb: 512,
-          memoryUsageMb: 142,
-          cpuLimitPercent: 50,
-          cpuUsagePercent: 3.8,
-          uptimeSeconds: 60,
-          currentLogs: [
-            `[${new Date().toISOString()}] [INFO] [Core] Instancia Avenix Bot desplegada en nodo eu-node-01.`,
-            `[${new Date().toISOString()}] [INFO] [Auth] Licencia oficial verificada (Order: ${orderNumber}).`,
-            `[${new Date().toISOString()}] [INFO] [Gateway] Shard 0 inicializado y listo para conectar con Discord.`,
-          ],
-        },
+      const paypalUrl = `${paypalBase}?${paypalParams.toString()}`;
+
+      const response = NextResponse.json({
+        success: true,
+        orderNumber,
+        redirectUrl: paypalUrl,
       });
 
-      await prisma.botConfiguration.create({
-        data: {
-          botInstanceId: botInst.id,
-          prefix: "!",
-          embedColorHex: "#3B82F6",
-          modulesEnabled: ["moderation", "tickets", "utility"],
-        },
-      });
-
-      // If subscription, create Subscription record
-      if (selectedPrice.billingType === "RECURRING") {
-        await prisma.subscription.create({
-          data: {
-            userId: currentUser.id,
-            serviceId: service.id,
-            planName: `Avenix Bot (${selectedPrice.name})`,
-            amountCents: selectedPrice.priceCents,
-            interval: selectedPrice.interval === "YEAR" ? "YEAR" : "MONTH",
-            status: "ACTIVE",
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: renewalDate,
-          },
+      if (token) {
+        response.cookies.set("avenix_session_token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7,
         });
       }
+
+      return response;
     }
 
-    // Welcome / Order Notification
-    await prisma.notification.create({
-      data: {
-        userId: currentUser.id,
-        title: "¡Contratación completada con éxito!",
-        message: `Tu pedido ${orderNumber} ha sido aceptado y la factura ${invoiceNumber} se ha emitido correctamente. Ya puedes gestionar tus servicios desde Avenix Control.`,
-        type: "ORDER",
-      },
-    });
-
-    // Audit Log
-    await prisma.auditLog.create({
-      data: {
-        userId: currentUser.id,
-        action: "CHECKOUT_ORDER_COMPLETED",
-        entityType: "ORDER",
-        entityId: order.id,
-        detailsJson: {
-          orderNumber,
-          invoiceNumber,
-          totalAmountCents,
-          planId: selectedPrice.id,
-        },
-      },
-    });
-
-    const response = NextResponse.json({
-      success: true,
-      orderNumber,
-      invoiceNumber,
-      redirectUrl: `/checkout/success?order=${orderNumber}&invoice=${invoiceNumber}`,
-    });
-
-    if (token) {
-      response.cookies.set("avenix_session_token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7,
-      });
-    }
-
-    return response;
+    return NextResponse.json(
+      { error: "Método de pago no válido." },
+      { status: 400 }
+    );
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return NextResponse.json(
@@ -331,7 +284,7 @@ export async function POST(req: Request) {
     }
     console.error("Checkout process error:", err);
     return NextResponse.json(
-      { error: err?.message || "Error al procesar el pago o contratación" },
+      { error: err?.message || "Error al procesar la contratación." },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { fulfillOrder } from "@/lib/fulfillment";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
 
   if (!webhookSecret || !signature) {
     return NextResponse.json(
-      { error: "Firma de webhook o secreto no configurado" },
+      { error: "Firma de webhook o secreto de Stripe no configurado en el servidor." },
       { status: 400 }
     );
   }
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error(`Webhook signature verification failed: ${err.message}`);
     return NextResponse.json(
-      { error: `Firma inválida: ${err.message}` },
+      { error: `Firma inválida de Stripe: ${err.message}` },
       { status: 400 }
     );
   }
@@ -36,72 +37,58 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object;
         const userId = session.metadata?.userId;
+        const orderId = session.metadata?.orderId;
+        const orderNumber = session.metadata?.orderNumber;
         const priceId = session.metadata?.priceId;
         const productName = session.metadata?.productName;
 
-        if (userId) {
-          const year = new Date().getFullYear();
-          const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-          const orderNumber = `AVX-${year}-${randomSuffix}`;
-          const invoiceNumber = `FAC-${year}-${randomSuffix}`;
+        const amountTotal = session.amount_total || 0;
+        const transactionId =
+          (session.payment_intent as string) || session.id;
 
-          // Create verified Order & Invoice in Database
-          try {
-            const order = await prisma.order.create({
-              data: {
-                orderNumber,
-                userId,
-                status: "ACCEPTED",
-                totalAmountCents: session.amount_total || 0,
-                notes: `Pago verificado por Stripe (Session: ${session.id})`,
-              },
-            });
-
-            // Create Invoice
-            const totalCents = session.amount_total || 0;
-            const baseCents = Math.round(totalCents / 1.21);
-            const vatCents = totalCents - baseCents;
-
-            await prisma.invoice.create({
-              data: {
-                invoiceNumber,
-                userId,
-                orderId: order.id,
-                amountCents: baseCents,
-                vatAmountCents: vatCents,
-                totalAmountCents: totalCents,
-                status: "PAID",
-                stripePaymentIntentId: session.payment_intent as string,
-                paidAt: new Date(),
-                dueDate: new Date(),
-              },
-            });
-
-            // Audit log
-            await prisma.auditLog.create({
-              data: {
-                userId,
-                action: "STRIPE_CHECKOUT_CONFIRMED_SERVER_SIDE",
-                entityType: "ORDER",
-                entityId: order.id,
-                detailsJson: {
-                  orderNumber,
-                  invoiceNumber,
-                  amount: totalCents,
-                },
-              },
-            });
-          } catch (dbErr) {
-            console.error("Error creating order/invoice from webhook:", dbErr);
-          }
-        }
+        // Fulfill using centralized fulfillment engine
+        await fulfillOrder({
+          orderId,
+          orderNumber,
+          userId,
+          paymentGateway: "STRIPE",
+          gatewayTransactionId: transactionId,
+          amountPaidCents: amountTotal,
+          planId: priceId,
+          planName: productName,
+          notes: `Stripe Checkout Session completada (${session.id})`,
+        });
         break;
       }
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
-        // Subscription recurring renewal payment succeeded
+        // Manage recurring renewal payment
         try {
+          if (invoice.subscription) {
+            const subscription = await prisma.subscription.findFirst({
+              where: { stripeSubscriptionId: invoice.subscription as string },
+            });
+
+            if (subscription) {
+              // Extend period
+              const newEnd = new Date();
+              if (subscription.interval === "YEAR") {
+                newEnd.setFullYear(newEnd.getFullYear() + 1);
+              } else {
+                newEnd.setMonth(newEnd.getMonth() + 1);
+              }
+
+              await prisma.subscription.update({
+                where: { id: subscription.id },
+                data: {
+                  status: "ACTIVE",
+                  currentPeriodEnd: newEnd,
+                },
+              });
+            }
+          }
+
           await prisma.auditLog.create({
             data: {
               action: "STRIPE_INVOICE_PAYMENT_SUCCEEDED",
@@ -109,10 +96,13 @@ export async function POST(req: Request) {
               detailsJson: {
                 stripeInvoiceId: invoice.id,
                 amountPaid: invoice.amount_paid,
+                subscription: invoice.subscription,
               },
             },
           });
-        } catch {}
+        } catch (subErr) {
+          console.error("Error updating subscription period from invoice:", subErr);
+        }
         break;
       }
 
@@ -134,12 +124,13 @@ export async function POST(req: Request) {
               },
             },
           });
-        } catch {}
+        } catch (cancelErr) {
+          console.error("Error cancelling subscription:", cancelErr);
+        }
         break;
       }
 
       default:
-        // Other events ignored
         break;
     }
 
@@ -147,8 +138,17 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("Error handling Stripe event:", err);
     return NextResponse.json(
-      { error: "Error interno al procesar el evento de webhook" },
+      { error: "Error interno al procesar el evento de webhook de Stripe" },
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    status: "online",
+    gateway: "STRIPE_WEBHOOK",
+    endpoint: "/api/stripe/webhook",
+    configured: !!process.env.STRIPE_WEBHOOK_SECRET,
+  });
 }

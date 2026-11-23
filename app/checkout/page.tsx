@@ -37,7 +37,7 @@ function CheckoutContent() {
     customerEmail: "",
     companyName: "",
     taxId: "",
-    paymentMethod: "DIRECT" as "STRIPE" | "DIRECT",
+    paymentMethod: "STRIPE" as "STRIPE" | "PAYPAL",
     acceptTerms: true,
   });
 
@@ -284,46 +284,20 @@ function CheckoutContent() {
 
               {/* Payment Method Selector */}
               <div className="p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                  3. Método de Pago Seguro
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    3. Método de Pago Oficial
+                  </label>
+                  <span className="text-[10px] text-blue-400 font-medium">Verificación Webhook / IPN</span>
+                </div>
 
                 <div className="space-y-3">
-                  <label
-                    className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      form.paymentMethod === "DIRECT"
-                        ? "bg-[#0B1220] border-blue-500 ring-1 ring-blue-500"
-                        : "bg-[#0B1220]/60 border-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        checked={form.paymentMethod === "DIRECT"}
-                        onChange={() => setForm({ ...form, paymentMethod: "DIRECT" })}
-                        className="text-blue-600 focus:ring-0"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-white">Activación Inmediata Avenix Checkout</span>
-                          <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.2 rounded font-bold uppercase">
-                            Instantáneo
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          Genera tu factura oficial y activa el bot de inmediato en tu panel Avenix Control.
-                        </p>
-                      </div>
-                    </div>
-                    <Zap className="w-5 h-5 text-blue-400 shrink-0" />
-                  </label>
-
+                  {/* Stripe Option */}
                   <label
                     className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                       form.paymentMethod === "STRIPE"
                         ? "bg-[#0B1220] border-blue-500 ring-1 ring-blue-500"
-                        : "bg-[#0B1220]/60 border-slate-800"
+                        : "bg-[#0B1220]/60 border-slate-800 hover:border-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -335,13 +309,51 @@ function CheckoutContent() {
                         className="text-blue-600 focus:ring-0"
                       />
                       <div>
-                        <span className="text-xs font-bold text-white">Tarjeta de Débito / Crédito (Stripe)</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white">Tarjeta de Débito / Crédito (Stripe)</span>
+                          <span className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.2 rounded font-bold uppercase">
+                            Recomendado
+                          </span>
+                        </div>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          Pasarela oficial protegida con 3D Secure y Apple Pay / Google Pay.
+                          Pasarela oficial protegida con 3D Secure, Apple Pay y Google Pay.
                         </p>
                       </div>
                     </div>
                     <CreditCard className="w-5 h-5 text-indigo-400 shrink-0" />
+                  </label>
+
+                  {/* PayPal Option */}
+                  <label
+                    className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                      form.paymentMethod === "PAYPAL"
+                        ? "bg-[#0B1220] border-blue-500 ring-1 ring-blue-500"
+                        : "bg-[#0B1220]/60 border-slate-800 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        checked={form.paymentMethod === "PAYPAL"}
+                        onChange={() => setForm({ ...form, paymentMethod: "PAYPAL" })}
+                        className="text-blue-600 focus:ring-0"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white">PayPal / Tarjeta con PayPal</span>
+                          <span className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.2 rounded font-bold uppercase">
+                            IPN Seguro
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Paga con tu saldo de PayPal, cuenta bancaria o tarjetas vinculadas.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-5 h-5 flex items-center justify-center font-bold text-amber-400 text-xs shrink-0 font-sans">
+                      PP
+                    </div>
                   </label>
                 </div>
               </div>
@@ -378,15 +390,20 @@ function CheckoutContent() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Procesando pago y configurando bot...</span>
+                    <span>Conectando con {form.paymentMethod === "STRIPE" ? "Stripe" : "PayPal"}...</span>
                   </>
                 ) : (
                   <>
-                    <span>Pagar y Activar Servicio ({formatCurrency(totalAmountCents)})</span>
+                    <span>
+                      Pagar con {form.paymentMethod === "STRIPE" ? "Tarjeta (Stripe)" : "PayPal"} ({formatCurrency(totalAmountCents)})
+                    </span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
+              <p className="text-[11px] text-slate-500 text-center">
+                El servicio se activará de forma inmediata una vez verificado el pago por la pasarela oficial.
+              </p>
             </form>
           </div>
 

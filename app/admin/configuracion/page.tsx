@@ -154,11 +154,11 @@ export default function AdminConfiguracionPage() {
             </div>
           </form>
 
-          {/* Security Status Box */}
+          {/* Security & Webhooks Status Box */}
           <div className="p-6 rounded-3xl bg-[#0B1220] border border-slate-800 space-y-4">
             <h3 className="text-sm font-bold text-white font-display flex items-center gap-2">
               <Lock className="w-4 h-4 text-emerald-400" />
-              <span>Estado de Claves y Secretos en Servidor</span>
+              <span>Estado de Pasarelas y Webhooks de Pago</span>
             </h3>
 
             <div className="space-y-2.5 text-xs">
@@ -167,8 +167,18 @@ export default function AdminConfiguracionPage() {
                 <span className="text-emerald-400 font-mono font-bold">DATABASE_URL OK</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-[#111827] border border-slate-800">
-                <span className="text-slate-300 font-medium">Stripe Payment Gateway</span>
-                <span className="text-blue-400 font-mono font-bold">Configurado / Seguro</span>
+                <div>
+                  <span className="text-slate-300 font-medium block">Stripe Webhook Listener</span>
+                  <span className="text-[10px] text-slate-500 font-mono">/api/stripe/webhook</span>
+                </div>
+                <span className="text-blue-400 font-mono font-bold">3D Secure / Webhook</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#111827] border border-slate-800">
+                <div>
+                  <span className="text-slate-300 font-medium block">PayPal IPN Listener</span>
+                  <span className="text-[10px] text-slate-500 font-mono">/api/webhooks/paypal</span>
+                </div>
+                <span className="text-amber-400 font-mono font-bold">IPN Postback Validador</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-[#111827] border border-slate-800">
                 <span className="text-slate-300 font-medium">JWT & Cookie Signing Secret</span>
