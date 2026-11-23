@@ -2,6 +2,7 @@ import { authorizeGuild } from "@/lib/bot-access";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!parsed.success) return NextResponse.json({ error: "Diseño inválido", fields: parsed.error.flatten().fieldErrors }, { status: 400 });
 
   const { id, ...data } = parsed.data;
+  const safeData = { ...data, embedData: data.embedData as Prisma.InputJsonObject, components: data.components as Prisma.InputJsonArray };
   try {
     if (id) {
       // Never upsert a user-supplied ID: it could belong to another guild.
@@ -43,13 +45,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       if (!existing) return NextResponse.json({ error: "Diseño no encontrado en este servidor" }, { status: 404 });
       const result = await prisma.studioEmbed.updateMany({
         where: { id, guildId: params.id },
-        data: { ...data, version: { increment: 1 } },
+        data: { ...safeData, version: { increment: 1 } },
       });
       if (!result.count) return NextResponse.json({ error: "El diseño ya no está disponible" }, { status: 409 });
       const embed = await prisma.studioEmbed.findUnique({ where: { id } });
       return NextResponse.json({ success: true, embed });
     }
-    const embed = await prisma.studioEmbed.create({ data: { guildId: params.id, ...data } });
+    const embed = await prisma.studioEmbed.create({ data: { guildId: params.id, ...safeData } });
     return NextResponse.json({ success: true, embed });
   } catch (error) {
     console.error("[Studio] Error guardando diseño", error);
