@@ -70,7 +70,7 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
         scrolled
           ? "bg-[#0B1220]/85 backdrop-blur-xl border-b border-blue-500/15 py-3 shadow-lg shadow-black/40"
           : "bg-transparent py-5 border-b border-transparent"
@@ -150,9 +150,12 @@ export function Navbar() {
 
         {/* Mobile menu button */}
         <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Abrir menú"
+          type="button"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="avenix-mobile-menu"
+          className="relative z-[110] md:hidden p-3 min-w-11 min-h-11 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
         >
           {mobileMenuOpen ? (
             <X className="w-6 h-6 text-blue-400" />
@@ -162,10 +165,12 @@ export function Navbar() {
         </button>
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer: fixed above page content, with a tappable backdrop */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-blue-500/20 bg-[#0B1220]/95 backdrop-blur-2xl px-4 pt-3 pb-6 animate-in slide-in-from-top-4 duration-200">
-          <nav className="flex flex-col gap-1.5">
+        <>
+        <button type="button" aria-label="Cerrar menú de navegación" onClick={() => setMobileMenuOpen(false)} className="fixed inset-0 top-[72px] z-[101] bg-black/60 md:hidden" />
+        <div id="avenix-mobile-menu" className="fixed left-0 right-0 top-[72px] z-[102] max-h-[calc(100dvh-72px)] overflow-y-auto md:hidden border-b border-blue-500/20 bg-[#0B1220] shadow-2xl px-4 pt-3 pb-6">
+          <nav aria-label="Navegación móvil" className="flex flex-col gap-1.5" onClick={(event) => { if ((event.target as HTMLElement).closest("a")) setMobileMenuOpen(false); }}>
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -223,6 +228,7 @@ export function Navbar() {
             </div>
           </nav>
         </div>
+        </>
       )}
     </header>
   );
