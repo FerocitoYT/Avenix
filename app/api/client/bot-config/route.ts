@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { encryptSecret } from "@/lib/crypto";
+import { encryptSecret, decryptSecret } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
 const configSchema = z.object({
@@ -53,8 +53,13 @@ export async function POST(req:Request) {
     return NextResponse.json({error:"Introduce el token del bot"},{status:400});
   // Saving an unchanged configuration must not disconnect a live Discord client.
   const current = service.botInstance;
+  let tokenChanged = Boolean(botToken);
+  if (botToken && current.configuration?.tokenSecretRef) {
+    try { tokenChanged = decryptSecret(current.configuration.tokenSecretRef) !== botToken; }
+    catch { tokenChanged = true; } // Unreadable existing token must be replaced.
+  }
   const credentialsChanged = current.botClientId !== applicationId ||
-    current.guildId !== guildId || Boolean(botToken);
+    current.guildId !== guildId || tokenChanged;
   const mustStart = current.status === "STOPPED" || current.status === "ERROR";
   const requestStart = credentialsChanged || mustStart;
   await prisma.$transaction(async tx=>{
@@ -68,7 +73,7 @@ export async function POST(req:Request) {
     await tx.botConfiguration.upsert({
       where:{botInstanceId:current.id},
       create:{botInstanceId:current.id,tokenSecretRef:botToken?encryptSecret(botToken):null},
-      update:botToken?{tokenSecretRef:encryptSecret(botToken)}:{}
+      update:tokenChanged&&botToken?{tokenSecretRef:encryptSecret(botToken)}:{}
     });
     await tx.auditLog.create({data:{userId:user.id,action:"BOT_CONFIGURATION_UPDATED",entityType:"BOT",entityId:current.id,
       detailsJson:{credentialsChanged,restartRequested:requestStart}}});
