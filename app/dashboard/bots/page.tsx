@@ -967,7 +967,7 @@ export default function BotControlDashboardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
                   <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Estado</span>
-                  <p className="text-lg font-extrabold text-white mt-1">{customBot.status}</p>
+                  <p className="text-lg font-extrabold text-white mt-1">{hostStatus?.status === "RUNNING" ? "Conectado" : hostStatus?.status === "RESTARTING" ? "Iniciando" : hostStatus?.status === "STOPPED" ? "Detenido" : hostStatus?.status === "ERROR" ? "Error" : "Sin conexión"}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
                   <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Ping Latencia</span>
