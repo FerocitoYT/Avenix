@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptSecret } from "@/lib/crypto";
+import { DEFAULT_RULES } from "@/lib/integrations/discord-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,12 @@ const input = z.object({
     } catch { return false; }
   }, "Debes indicar una URL de webhook oficial de Discord"),
   enabled: z.boolean().default(true),
+  rules: z.array(z.object({
+    event: z.enum(["order.created", "order.updated", "order.deleted"]),
+    enabled: z.boolean(), title: z.string().trim().max(256).optional(),
+    minTotal: z.number().nonnegative().max(1e9).optional(),
+    statuses: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  })).max(3).optional(),
 });
 async function authorize(id: string) {
   const user = await getCurrentUser();
@@ -44,7 +51,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   return NextResponse.json({
     configured: true, enabled: data.enabled, storeName: data.storeName,
     webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/api/integrations/woocommerce/${data.integrationId}`,
-    discordDestinationConfigured: true,
+    discordDestinationConfigured: true, rules: data.rules || DEFAULT_RULES,
   });
 }
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -58,7 +65,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   const integrationId = old?.integrationId || randomUUID();
   const record = {
     integrationId, botId: params.id, storeName: parsed.data.storeName,
-    enabled: parsed.data.enabled, discordWebhookEncrypted: encryptSecret(parsed.data.discordWebhookUrl),
+    enabled: parsed.data.enabled, rules: parsed.data.rules || old?.rules || DEFAULT_RULES, discordWebhookEncrypted: encryptSecret(parsed.data.discordWebhookUrl),
     signingSecretEncrypted: encryptSecret(secret),
   };
   await prisma.setting.upsert({
