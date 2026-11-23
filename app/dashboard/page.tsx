@@ -41,6 +41,8 @@ export default function DashboardHomePage() {
     activeServices: [],
   });
 
+  useEffect(() => { fetch("/api/customer/overview", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("Error"); return r.json(); }).then(d => setData(d.overview)).catch(() => console.error("No se pudo cargar el panel")); }, []);
+
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">
       {/* Header Greeting */}
@@ -80,7 +82,7 @@ export default function DashboardHomePage() {
             <span className="text-2xl sm:text-3xl font-extrabold text-white font-display">
               {data.servicesCount}
             </span>
-            <span className="text-[10px] text-emerald-400 block mt-1">100% Operativos</span>
+            <span className="text-[10px] text-emerald-400 block mt-1">Servicios contratados</span>
           </div>
         </Link>
 
@@ -97,7 +99,7 @@ export default function DashboardHomePage() {
             <span className="text-2xl sm:text-3xl font-extrabold text-white font-display">
               {data.subscriptionsCount}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1">Renovación automática</span>
+            <span className="text-[10px] text-slate-400 block mt-1">Suscripciones vigentes</span>
           </div>
         </Link>
 
@@ -168,7 +170,7 @@ export default function DashboardHomePage() {
                   </h3>
                 </div>
                 <Link
-                  href="/dashboard/bots"
+                  href="/dashboard/bots/configurar"
                   className="text-xs font-semibold text-blue-400 hover:underline flex items-center gap-1"
                 >
                   <span>Abrir consola y logs</span>
@@ -195,7 +197,7 @@ export default function DashboardHomePage() {
 
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase">
-                      Online
+                      {service.botStatus === "RUNNING" ? "Registrado como activo" : "Detenido"}
                     </span>
                     <Link
                       href="/dashboard/bots"
