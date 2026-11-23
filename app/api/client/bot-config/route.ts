@@ -27,6 +27,8 @@ export async function GET() {
     subscriptionActive:s.subscriptions.some(active),
     expiresAt:s.subscriptions.filter(active).sort((a,b)=>b.currentPeriodEnd.getTime()-a.currentPeriodEnd.getTime())[0]?.currentPeriodEnd ?? null,
     bot:s.botInstance?{
+      observedStatus: s.botInstance.status === "RUNNING" && (!s.botInstance.lastPingAt || Date.now() - new Date(s.botInstance.lastPingAt).getTime() > 90000) ? "OFFLINE" : s.botInstance.status,
+      lastPingAt: s.botInstance.lastPingAt,
       id:s.botInstance.id,applicationId:s.botInstance.botClientId,
       guildId:s.botInstance.guildId,status:s.botInstance.status,
       tokenConfigured:!!s.botInstance.configuration?.tokenSecretRef
