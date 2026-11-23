@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const configSchema = z.object({
   serviceId: z.string().min(1),
   applicationId: z.string().regex(/^\d{17,20}$/, "ID de aplicación no válido"),
-  guildId: z.string().regex(/^\d{17,20}$/, "ID de servidor no válido").optional().or(z.literal("")),
+  guildId: z.string().regex(/^\d{17,20}$/, "Introduce un ID de servidor válido"),
   botToken: z.string().min(30).max(300).optional().or(z.literal("")),
 });
 const active = (s: {status:string;currentPeriodEnd:Date}) =>
@@ -51,7 +51,7 @@ export async function POST(req:Request) {
     return NextResponse.json({error:"Introduce el token del bot"},{status:400});
   await prisma.$transaction(async tx=>{
     await tx.botInstance.update({where:{id:service.botInstance!.id},data:{
-      botClientId:applicationId,guildId:guildId||null,status:"STOPPED"
+      botClientId:applicationId,guildId,status:"RESTARTING"
     }});
     await tx.botConfiguration.upsert({
       where:{botInstanceId:service.botInstance!.id},
@@ -60,5 +60,5 @@ export async function POST(req:Request) {
     });
     await tx.auditLog.create({data:{userId:user.id,action:"BOT_CONFIGURATION_UPDATED",entityType:"BOT",entityId:service.botInstance!.id}});
   });
-  return NextResponse.json({success:true,message:"Configuración guardada. El bot no se iniciará hasta que esté conectado el host de ejecución."});
+  return NextResponse.json({success:true,status:"RESTARTING",message:"Configuración guardada. Inicio solicitado a Discloud; el estado cambiará cuando Discord confirme la conexión."});
 }
