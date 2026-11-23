@@ -19,8 +19,8 @@ export async function POST(req:Request) {
  const user=await getCurrentUser();
  if(!user)return NextResponse.json({error:"No autorizado"},{status:401});
  const body=await req.json().catch(()=>null);
- if(!body||typeof body.guildId!=="string"||!/^\\d{17,20}$/.test(body.guildId)||
- typeof body.applicationId!=="string"||!/^\\d{17,20}$/.test(body.applicationId)||
+ if(!body||typeof body.guildId!=="string"||!/^\d{17,20}$/.test(body.guildId)||
+ typeof body.applicationId!=="string"||!/^\d{17,20}$/.test(body.applicationId)||
  typeof body.botName!=="string"||!body.botName.trim())
  return NextResponse.json({error:"Datos de configuración inválidos"},{status:400});
  const {guildId,applicationId,botName,botToken,statusText,activityType}=body;
