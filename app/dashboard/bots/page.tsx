@@ -779,101 +779,21 @@ export default function BotControlDashboardPage() {
         </div>
       )}
 
-      {/* TAB 5: BOT PERSONALIZADO (WHITE-LABEL) */}
+      {/* TAB 5: BOT PERSONALIZADO — real hosted instances only */}
       {activeTab === "custom_bot" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Credentials Card */}
-            <div className="p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-4 text-xs">
-              <div className="pb-3 border-b border-slate-800">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-blue-400" />
-                  <span>Credenciales del Bot Dedicado</span>
-                </h3>
-                <p className="text-slate-400 text-[11px] mt-0.5">
-                  El token es cifrado con AES-256-GCM y nunca se muestra en texto plano.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Application / Client ID:</label>
-                <input
-                  type="text"
-                  value={customBot.applicationId}
-                  onChange={(e) => setCustomBot({ ...customBot, applicationId: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none"
-                  placeholder="Ej. 123456789012345678"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Nombre de Marca del Bot:</label>
-                <input
-                  type="text"
-                  value={customBot.botName}
-                  onChange={(e) => setCustomBot({ ...customBot, botName: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none"
-                  placeholder="Ej. MiServidor Bot"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Discord Bot Token (Cifrado seguro):</label>
-                <input
-                  type="password"
-                  value={customBot.botToken}
-                  onChange={(e) => setCustomBot({ ...customBot, botToken: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none font-mono"
-                  placeholder={customBot.tokenMask || "Pega aquí el token de tu bot"}
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Estado de Presencia:</label>
-                <input
-                  type="text"
-                  value={customBot.statusText}
-                  onChange={(e) => setCustomBot({ ...customBot, statusText: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none"
-                  placeholder="Ej. Jugando en mi servidor | /help"
-                />
-              </div>
-
-              <button
-                onClick={saveCustomBot}
-                disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                <span>{saving ? "Guardando..." : "Guardar y Vincular Instancia"}</span>
-              </button>
-            </div>
-
-            {/* Metrics & Status */}
-            <div className="p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-5">
-              <div className="pb-3 border-b border-slate-800">
-                <h3 className="text-sm font-bold text-white">Telemetría de la Instancia</h3>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Estado</span>
-                  <p className="text-lg font-extrabold text-white mt-1">{hostStatus?.status === "RUNNING" ? "Conectado" : hostStatus?.status === "RESTARTING" ? "Iniciando" : hostStatus?.status === "STOPPED" ? "Detenido" : hostStatus?.status === "ERROR" ? "Error" : "Sin conexión"}</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Ping Latencia</span>
-                  <p className="text-lg font-extrabold text-emerald-400 mt-1">{customBot.pingMs || 18} ms</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Memoria RAM</span>
-                  <p className="text-lg font-extrabold text-blue-400 mt-1">{customBot.memoryUsageMb || 34.2} MB</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Versión Core</span>
-                  <p className="text-lg font-extrabold text-slate-300 mt-1">v1.0.0 Ent</p>
-                </div>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
+            <h3 className="text-base font-bold text-white">Credenciales y actividad del bot</h3>
+            <p className="text-sm text-slate-400">Configura el Client ID, servidor, token y presencia (Jugando, Viendo, Escuchando o Compitiendo). Estos datos se aplican al bot alojado en Discloud.</p>
+            <Link href="/dashboard/bots/configuracion" className="inline-flex rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500">
+              Configurar mi bot y su actividad
+            </Link>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
+            <h3 className="text-base font-bold text-white">Estado real de la instancia</h3>
+            <p className="text-2xl font-bold text-white">{hostStatus?.status === "RUNNING" ? "Conectado" : hostStatus?.status === "RESTARTING" ? "Iniciando" : hostStatus?.status === "STOPPED" ? "Detenido" : hostStatus?.status === "ERROR" ? "Error" : "Sin comunicación"}</p>
+            <p className="text-sm text-slate-400">Última confirmación del proceso: {hostStatus?.lastPingAt ? new Date(hostStatus.lastPingAt).toLocaleString("es-ES") : "Todavía no recibida"}</p>
+            <p className="text-xs text-slate-500">La web no muestra ping, memoria ni versión inventados. El estado depende del heartbeat de Discloud.</p>
           </div>
         </div>
       )}
