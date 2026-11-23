@@ -48,6 +48,7 @@ export default function BotControlDashboardPage() {
   const [selectedGuildId, setSelectedGuildId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"security" | "tickets" | "welcome" | "studio" | "custom_bot">("security");
   const [loading, setLoading] = useState<boolean>(true);
+  const [hostStatus, setHostStatus] = useState<{status:string;lastPingAt:string|null}|null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
@@ -113,6 +114,23 @@ export default function BotControlDashboardPage() {
     pingMs: 0,
   });
   const [customLogs, setCustomLogs] = useState<any[]>([]);
+
+  // This indicator shows the actual host-observed state, never a hardcoded Online label.
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/client/bot-config", { cache: "no-store" });
+        if (!response.ok) throw new Error("Status unavailable");
+        const data = await response.json();
+        const bot = data.services?.find((s: any) => s.bot?.guildId === selectedGuildId)?.bot || data.services?.find((s: any) => s.bot)?.bot;
+        if (active) setHostStatus(bot ? { status: bot.observedStatus || "OFFLINE", lastPingAt: bot.lastPingAt } : null);
+      } catch { if (active) setHostStatus(null); }
+    };
+    void refresh();
+    const interval = setInterval(() => void refresh(), 10000);
+    return () => { active = false; clearInterval(interval); };
+  }, [selectedGuildId]);
 
   // Load all guilds
   useEffect(() => {
@@ -314,8 +332,8 @@ export default function BotControlDashboardPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
               Avenix Control — Panel del Bot
             </h1>
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              Online
+            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${hostStatus?.status === "RUNNING" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : hostStatus?.status === "RESTARTING" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" : "bg-slate-800 text-slate-400 border-slate-700"}`} title={hostStatus?.lastPingAt ? `Última confirmación: ${new Date(hostStatus.lastPingAt).toLocaleString("es-ES")}` : "Sin confirmación reciente de Discloud"}>
+              {hostStatus?.status === "RUNNING" ? "Conectado" : hostStatus?.status === "RESTARTING" ? "Iniciando" : hostStatus?.status === "STOPPED" ? "Detenido" : hostStatus?.status === "ERROR" ? "Error de conexión" : "Sin conexión"}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
