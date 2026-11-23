@@ -3,108 +3,75 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const actionSchema = z.object({
-  action: z.enum(["START", "STOP", "RESTART"]),
-});
+export const dynamic = "force-dynamic";
+const actionSchema = z.object({ action: z.enum(["START", "STOP", "RESTART"]) });
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+/**
+ * Discloud TYPE=bot does not expose a public HTTP API. Send commands through
+ * the shared Neon database; the bot host reconciles within ~10 seconds and
+ * updates the observed status when the action is actually applied.
+ */
+export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Inicia sesión" }, { status: 401 });
 
-    const body = await req.json();
-    const { action } = actionSchema.parse(body);
+    const parsed = actionSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Acción inválida" }, { status: 400 });
+    const { action } = parsed.data;
 
-    const botId = params.id;
-    const instance = await prisma.botInstance.findUnique({
-      where: { id: botId },
-      include: { service: { include: { subscriptions: true } } },
+    const bot = await prisma.botInstance.findUnique({
+      where: { id: params.id },
+      include: {
+        configuration: true,
+        service: { include: { subscriptions: true } },
+      },
     });
-    if (!instance || (instance.service.userId !== user.id && user.role !== "ADMIN")) {
+    if (!bot || (user.role !== "ADMIN" && bot.service.userId !== user.id)) {
       return NextResponse.json({ error: "Bot no encontrado" }, { status: 404 });
     }
-    const hasSubscription = instance.service.subscriptions.some(
-      (sub) => ["ACTIVE", "TRIALING"].includes(sub.status) && sub.currentPeriodEnd > new Date()
-    );
-    if (!hasSubscription) {
-      return NextResponse.json({ error: "Suscripción no vigente" }, { status: 403 });
-    }
-    if (!process.env.AVENIX_BOT_API_URL || !process.env.INTERNAL_API_SECRET) {
-      return NextResponse.json({ error: "Host de bots no configurado" }, { status: 503 });
-    }
 
-    const bot = await prisma.botInstance.findUnique({ where: { id: botId }, include: { service: { include: { subscriptions: true } } } });
-    if (!bot || (user.role !== "ADMIN" && bot.service.userId !== user.id)) return NextResponse.json({ error: "Bot no encontrado" }, { status: 404 });
-    const active = bot.service.subscriptions.some((sub) => (sub.status === "ACTIVE" || sub.status === "TRIALING") && sub.currentPeriodEnd > new Date());
-    if (!active) return NextResponse.json({ error: "La suscripción del bot no está vigente" }, { status: 403 });
-
-    // Dispatch to local Avenix Bot API if active
-    const botApiUrl = process.env.AVENIX_BOT_API_URL || "http://localhost:4000";
-    const internalSecret = process.env.INTERNAL_API_SECRET;
-    let dispatchedToBotService = false;
-
-    try {
-      const botResponse = await fetch(`${botApiUrl}/api/instances/${botId}/action`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(internalSecret ? { Authorization: `Bearer ${internalSecret}` } : {}),
-        },
-        body: JSON.stringify({ action }),
-        signal: AbortSignal.timeout(2000),
-      });
-      if (botResponse.ok) {
-        dispatchedToBotService = true;
+    if (action !== "STOP") {
+      const now = new Date();
+      const valid = bot.service.status === "ACTIVE" &&
+        bot.service.serviceType === "DISCORD_BOT" &&
+        bot.service.subscriptions.some(sub =>
+          sub.userId === bot.service.userId &&
+          ["ACTIVE", "TRIALING"].includes(sub.status) &&
+          sub.currentPeriodStart <= now &&
+          sub.currentPeriodEnd > now
+        );
+      if (!valid) return NextResponse.json({ error: "La suscripción del bot no está vigente" }, { status: 403 });
+      if (!bot.botClientId || !bot.guildId || !bot.configuration?.tokenSecretRef) {
+        return NextResponse.json({ error: "Configura Client ID, servidor y token antes de iniciar" }, { status: 400 });
       }
-    } catch {
-      // Handled gracefully if local bot is offline or in development
     }
 
-    if (!dispatchedToBotService) return NextResponse.json({ error: "El host no confirmó la operación. No se ha cambiado el estado del bot.", dispatchedToBotService: false }, { status: 503 });
-
-    if (!dispatchedToBotService) {
-      return NextResponse.json({ error: "El host no confirmó la operación" }, { status: 502 });
-    }
-
-    // Log the action to audit logs
-    try {
-      await prisma.auditLog.create({
-        data: {
-          userId: user.id,
-          action: `BOT_CONTAINER_${action}`,
-          entityType: "BOT",
-          entityId: botId,
-          detailsJson: {
-            userEmail: user.email,
-            action,
-            node: "eu-node-01.avenix.dev",
-            dispatchedToBotService,
-          },
-        },
-      });
-    } catch {}
+    const queuedStatus = action === "STOP" ? "MAINTENANCE" : "RESTARTING";
+    await prisma.botInstance.update({
+      where: { id: bot.id },
+      data: { status: queuedStatus },
+    });
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: `BOT_${action}_REQUESTED`,
+        entityType: "BOT",
+        entityId: bot.id,
+        detailsJson: { action, status: "QUEUED", transport: "NEON" },
+      },
+    }).catch(error => console.error("[BotAction] Audit log error", error));
 
     return NextResponse.json({
+      accepted: true,
       success: true,
-      message: `Acción ${action} enviada a la infraestructura del bot con éxito.`,
-      status: action === "STOP" ? "STOPPED" : "RUNNING",
-      dispatchedToBotService,
-    });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Acción de bot no válida" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Error interno al ejecutar comando de infraestructura" },
-      { status: 500 }
-    );
+      applied: false,
+      action,
+      status: queuedStatus,
+      message: "Solicitud registrada. Discloud confirmará el resultado cuando procese la orden.",
+    }, { status: 202 });
+  } catch (error) {
+    console.error("[BotAction] Request failed", error);
+    return NextResponse.json({ error: "No se pudo enviar la orden al bot" }, { status: 500 });
   }
 }
