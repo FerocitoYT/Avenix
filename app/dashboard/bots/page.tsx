@@ -567,121 +567,12 @@ export default function BotControlDashboardPage() {
 
       {/* TAB 2: SISTEMA DE TICKETS */}
       {activeTab === "tickets" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Create Category */}
-            <div className="p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-white">Nueva Categoría de Soporte</h3>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-400 block mb-1">Emoji / Icono:</label>
-                  <input
-                    type="text"
-                    value={newCategoryEmoji}
-                    onChange={(e) => setNewCategoryEmoji(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none"
-                    placeholder="📩"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Nombre de la Categoría:</label>
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none"
-                    placeholder="Ej. Facturación y Pagos"
-                  />
-                </div>
-                <button
-                  onClick={createCategory}
-                  disabled={!newCategoryName}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Añadir Categoría</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Active Categories List */}
-            <div className="lg:col-span-2 p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-white">Categorías Disponibles</h3>
-              {ticketCategories.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {ticketCategories.map((cat) => (
-                    <div
-                      key={cat.id}
-                      className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{cat.emoji || "📩"}</span>
-                        <div>
-                          <p className="text-xs font-bold text-white">{cat.name}</p>
-                          <p className="text-[10px] text-slate-500">Máx: {cat.maxOpenPerUser} ticket por usuario</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => deleteCategory(cat.id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">No hay categorías configuradas. Crea una a la izquierda.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Tickets Table */}
-          <div className="p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-white">Historial de Tickets Recientes</h3>
-            {recentTickets.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="text-slate-400 border-b border-slate-800">
-                    <tr>
-                      <th className="pb-2">Ticket #</th>
-                      <th className="pb-2">Categoría</th>
-                      <th className="pb-2">Estado</th>
-                      <th className="pb-2">Creador</th>
-                      <th className="pb-2">Prioridad</th>
-                      <th className="pb-2">Apertura</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    {recentTickets.map((t) => (
-                      <tr key={t.id}>
-                        <td className="py-2.5 font-mono text-blue-400">#{t.ticketNumber}</td>
-                        <td className="py-2.5">{t.category?.name || "General"}</td>
-                        <td className="py-2.5">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              t.status === "OPEN"
-                                ? "bg-emerald-500/20 text-emerald-400"
-                                : t.status === "CLOSED"
-                                ? "bg-slate-800 text-slate-400"
-                                : "bg-amber-500/20 text-amber-400"
-                            }`}
-                          >
-                            {t.status}
-                          </span>
-                        </td>
-                        <td className="py-2.5">{t.creatorTag}</td>
-                        <td className="py-2.5 font-semibold">{t.priority}</td>
-                        <td className="py-2.5 text-slate-500">{new Date(t.createdAt).toLocaleDateString("es-ES")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500">No hay tickets registrados aún en este servidor.</p>
-            )}
-          </div>
+        <div className="rounded-2xl border border-slate-800 bg-[#111827] p-7 space-y-4">
+          <h3 className="text-xl font-bold text-white">🎫 Configuración completa del sistema de tickets</h3>
+          <p className="text-sm text-slate-400">Configura desde la web dónde se publicará el panel, su embed, los botones de apertura, categorías privadas, roles de soporte y preguntas para los usuarios. El bot aplica los cambios automáticamente en Discord.</p>
+          <Link href="/dashboard/bots/tickets" className="inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500">
+            Abrir editor de tickets
+          </Link>
         </div>
       )}
 
