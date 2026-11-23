@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Layers,
@@ -20,6 +20,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function MisServiciosPage() {
   const [services, setServices] = useState<any[]>([]);
+
+  useEffect(() => { fetch("/api/customer/overview", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("Error"); return r.json(); }).then(d => setServices(d.services || [])).catch(() => console.error("No se pudieron cargar los servicios")); }, []);
 
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">
@@ -94,7 +96,7 @@ export default function MisServiciosPage() {
                 <div className="flex items-center gap-2">
                   {service.type === "DISCORD_BOT" ? (
                     <Link
-                      href="/dashboard/bots"
+                      href="/dashboard/bots/configurar"
                       className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
                     >
                       <Settings className="w-3.5 h-3.5" />
