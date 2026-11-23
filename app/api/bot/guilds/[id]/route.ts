@@ -1,3 +1,4 @@
+import { authorizeGuild } from "@/lib/bot-access";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -9,6 +10,8 @@ export async function GET(
 ) {
   try {
     const guildId = params.id;
+    const access = await authorizeGuild(guildId);
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
     const guild = await prisma.guild.findUnique({
       where: { id: guildId },
@@ -89,6 +92,8 @@ export async function POST(
 ) {
   try {
     const guildId = params.id;
+    const access = await authorizeGuild(guildId);
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
     const body = await req.json();
 
     const updated = await prisma.guild.update({
