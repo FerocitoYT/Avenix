@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -5,8 +6,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     const guilds = await prisma.guild.findMany({
-      where: { isActive: true },
+      where: { isActive: true, ...(user.role === "ADMIN" ? {} : { OR: [{ ownerId: user.discordId || "__none__" }, { customBot: { is: { userId: user.id } } }] }) },
       include: {
         securityConfig: true,
         welcomeConfig: true,
