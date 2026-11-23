@@ -51,16 +51,28 @@ export async function POST(req:Request) {
   if(!service.botInstance) return NextResponse.json({error:"Instancia no provisionada"},{status:409});
   if(!botToken && !service.botInstance.configuration?.tokenSecretRef)
     return NextResponse.json({error:"Introduce el token del bot"},{status:400});
+  // Saving an unchanged configuration must not disconnect a live Discord client.
+  const current = service.botInstance;
+  const credentialsChanged = current.botClientId !== applicationId ||
+    current.guildId !== guildId || Boolean(botToken);
+  const mustStart = current.status === "STOPPED" || current.status === "ERROR";
+  const requestStart = credentialsChanged || mustStart;
   await prisma.$transaction(async tx=>{
-    await tx.botInstance.update({where:{id:service.botInstance!.id},data:{
-      botClientId:applicationId,guildId,status:"RESTARTING"
-    }});
+    if (credentialsChanged) {
+      await tx.botInstance.update({where:{id:current.id},data:{
+        botClientId:applicationId,guildId,status:"RESTARTING"
+      }});
+    } else if (mustStart) {
+      await tx.botInstance.update({where:{id:current.id},data:{status:"RESTARTING"}});
+    }
     await tx.botConfiguration.upsert({
-      where:{botInstanceId:service.botInstance!.id},
-      create:{botInstanceId:service.botInstance!.id,tokenSecretRef:botToken?encryptSecret(botToken):null},
+      where:{botInstanceId:current.id},
+      create:{botInstanceId:current.id,tokenSecretRef:botToken?encryptSecret(botToken):null},
       update:botToken?{tokenSecretRef:encryptSecret(botToken)}:{}
     });
-    await tx.auditLog.create({data:{userId:user.id,action:"BOT_CONFIGURATION_UPDATED",entityType:"BOT",entityId:service.botInstance!.id}});
+    await tx.auditLog.create({data:{userId:user.id,action:"BOT_CONFIGURATION_UPDATED",entityType:"BOT",entityId:current.id,
+      detailsJson:{credentialsChanged,restartRequested:requestStart}}});
   });
-  return NextResponse.json({success:true,status:"RESTARTING",message:"Configuración guardada. Inicio solicitado a Discloud; el estado cambiará cuando Discord confirme la conexión."});
+  return NextResponse.json({success:true,status:requestStart?"RESTARTING":current.status,
+    message:requestStart?"Configuración guardada. Se ha solicitado el inicio o reconexión del bot.":"Configuración guardada sin reiniciar el bot."});
 }
