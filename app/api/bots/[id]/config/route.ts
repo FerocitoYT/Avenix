@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { encryptSecret } from "@/lib/crypto";
+import { encryptSecret, decryptSecret } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
 const schema = z.object({
@@ -36,7 +36,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const { clientId, guildId, token } = parsed.data;
   if (token && !process.env.ENCRYPTION_MASTER_KEY) return NextResponse.json({ error: "Falta ENCRYPTION_MASTER_KEY en el servidor" }, { status: 503 });
   const bot = result.bot!;
-  const credentialsChanged = bot.botClientId !== clientId || bot.guildId !== guildId || Boolean(token);
+  let tokenChanged = Boolean(token);
+  if (token && bot.configuration?.tokenSecretRef) {
+    try { tokenChanged = decryptSecret(bot.configuration.tokenSecretRef) !== token; }
+    catch { tokenChanged = true; }
+  }
+  const credentialsChanged = bot.botClientId !== clientId || bot.guildId !== guildId || tokenChanged;
   const mustStart = bot.status === "STOPPED" || bot.status === "ERROR";
   const needsReconnect = credentialsChanged || mustStart;
   await prisma.$transaction(async tx => {
@@ -48,7 +53,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     await tx.botConfiguration.upsert({
       where: { botInstanceId: params.id },
       create: { botInstanceId: params.id, ...(token ? { tokenSecretRef: encryptSecret(token) } : {}) },
-      update: token ? { tokenSecretRef: encryptSecret(token) } : {},
+      update: tokenChanged && token ? { tokenSecretRef: encryptSecret(token) } : {},
     });
   });
   return NextResponse.json({ success: true, status: needsReconnect ? "RESTARTING" : bot.status,
