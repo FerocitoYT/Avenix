@@ -5,7 +5,8 @@ const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 function getMasterKey(): Buffer {
-  const secret = process.env.ENCRYPTION_MASTER_KEY || process.env.AUTH_SECRET || 'avenix_secure_master_encryption_key_2026';
+  const secret = process.env.ENCRYPTION_MASTER_KEY;
+  if (!secret || secret.length < 32) throw new Error('ENCRYPTION_MASTER_KEY debe configurarse con al menos 32 caracteres');
   return crypto.createHash('sha256').update(secret).digest();
 }
 
