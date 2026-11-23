@@ -15,7 +15,7 @@ export async function authorizeGuild(guildId: string) {
    where: { guildId, service: { userId: user.id, serviceType: "DISCORD_BOT", status: "ACTIVE", subscriptions: { some: { userId: user.id, status: { in: ["ACTIVE", "TRIALING"] }, currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now } } } } },
    select: { id: true }
  });
- const permitted = !!managedBot || (owner && !!managedBot) || (instance?.userId === user.id && !!managedBot);
+ const permitted = !!managedBot;
  if (!permitted) return { ok: false as const, status: 403, error: "No tienes acceso a este servidor" };
  return { ok: true as const, user };
 }
