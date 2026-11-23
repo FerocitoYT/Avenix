@@ -21,6 +21,22 @@ export async function POST(
     const { action } = actionSchema.parse(body);
 
     const botId = params.id;
+    const instance = await prisma.botInstance.findUnique({
+      where: { id: botId },
+      include: { service: { include: { subscriptions: true } } },
+    });
+    if (!instance || (instance.service.userId !== user.id && user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Bot no encontrado" }, { status: 404 });
+    }
+    const hasSubscription = instance.service.subscriptions.some(
+      (sub) => ["ACTIVE", "TRIALING"].includes(sub.status) && sub.currentPeriodEnd > new Date()
+    );
+    if (!hasSubscription) {
+      return NextResponse.json({ error: "Suscripción no vigente" }, { status: 403 });
+    }
+    if (!process.env.AVENIX_BOT_API_URL || !process.env.INTERNAL_API_SECRET) {
+      return NextResponse.json({ error: "Host de bots no configurado" }, { status: 503 });
+    }
 
     const bot = await prisma.botInstance.findUnique({ where: { id: botId }, include: { service: { include: { subscriptions: true } } } });
     if (!bot || (user.role !== "ADMIN" && bot.service.userId !== user.id)) return NextResponse.json({ error: "Bot no encontrado" }, { status: 404 });
@@ -50,6 +66,10 @@ export async function POST(
     }
 
     if (!dispatchedToBotService) return NextResponse.json({ error: "El host no confirmó la operación. No se ha cambiado el estado del bot.", dispatchedToBotService: false }, { status: 503 });
+
+    if (!dispatchedToBotService) {
+      return NextResponse.json({ error: "El host no confirmó la operación" }, { status: 502 });
+    }
 
     // Log the action to audit logs
     try {
