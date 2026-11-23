@@ -10,11 +10,12 @@ export async function authorizeGuild(guildId: string) {
  if (user.role === "ADMIN") return { ok: true as const, user };
  const instance = await prisma.customBotInstance.findUnique({ where: { guildId }, select: { userId: true } });
  const owner = !!user.discordId && guild.ownerId === user.discordId;
+ const now = new Date();
  const managedBot = await prisma.botInstance.findFirst({
-   where: { guildId, service: { userId: user.id, serviceType: "DISCORD_BOT" } },
+   where: { guildId, service: { userId: user.id, serviceType: "DISCORD_BOT", status: "ACTIVE", subscriptions: { some: { userId: user.id, status: { in: ["ACTIVE", "TRIALING"] }, currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now } } } } },
    select: { id: true }
  });
- const permitted = owner || instance?.userId === user.id || !!managedBot;
+ const permitted = !!managedBot || (owner && !!managedBot) || (instance?.userId === user.id && !!managedBot);
  if (!permitted) return { ok: false as const, status: 403, error: "No tienes acceso a este servidor" };
  return { ok: true as const, user };
 }
