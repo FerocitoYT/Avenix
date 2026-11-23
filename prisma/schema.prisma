@@ -684,7 +684,7 @@ model Ticket {
   guildId           String
   categoryId        String
   channelId         String         @unique
-  creatorId         String
+  creatorId         String?
   creatorDiscordId  String
   assignedToId      String?
   status            TicketStatus   @default(OPEN)
