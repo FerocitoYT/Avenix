@@ -22,6 +22,11 @@ export async function POST(
 
     const botId = params.id;
 
+    const bot = await prisma.botInstance.findUnique({ where: { id: botId }, include: { service: { include: { subscriptions: true } } } });
+    if (!bot || (user.role !== "ADMIN" && bot.service.userId !== user.id)) return NextResponse.json({ error: "Bot no encontrado" }, { status: 404 });
+    const active = bot.service.subscriptions.some((sub) => (sub.status === "ACTIVE" || sub.status === "TRIALING") && sub.currentPeriodEnd > new Date());
+    if (!active) return NextResponse.json({ error: "La suscripción del bot no está vigente" }, { status: 403 });
+
     // Dispatch to local Avenix Bot API if active
     const botApiUrl = process.env.AVENIX_BOT_API_URL || "http://localhost:4000";
     const internalSecret = process.env.INTERNAL_API_SECRET;
@@ -43,6 +48,8 @@ export async function POST(
     } catch {
       // Handled gracefully if local bot is offline or in development
     }
+
+    if (!dispatchedToBotService) return NextResponse.json({ error: "El host no confirmó la operación. No se ha cambiado el estado del bot.", dispatchedToBotService: false }, { status: 503 });
 
     // Log the action to audit logs
     try {
