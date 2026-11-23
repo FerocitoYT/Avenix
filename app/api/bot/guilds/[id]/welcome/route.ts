@@ -46,13 +46,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       create: { guildId: params.id, ...data },
       update: data,
     });
-    if (d.autoRoleId !== undefined) {
-      // The original UI controls one primary autorole. Replace it atomically
-      // instead of accumulating stale roles on every configuration change.
-      await prisma.$transaction(async tx => {
-        await tx.autoRole.deleteMany({ where: { guildId: params.id } });
-        if (d.autoRoleId) await tx.autoRole.create({ data: { guildId: params.id, roleId: d.autoRoleId, delaySeconds: 0 } });
-      });
+    if (d.autoRoleId) {
+      const existing = await prisma.autoRole.findFirst({ where: { guildId: params.id, roleId: d.autoRoleId } });
+      if (!existing) await prisma.autoRole.create({ data: { guildId: params.id, roleId: d.autoRoleId, delaySeconds: 0 } });
     }
     return NextResponse.json({ success: true, config });
   } catch (error) {
