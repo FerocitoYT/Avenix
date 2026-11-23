@@ -217,9 +217,12 @@ export default function BotControlDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(security),
       });
-      if (res.ok) notifySave("¡Configuración de seguridad guardada exitosamente!");
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.fields ? Object.values(result.fields).flat().join(". ") || result.error : result.error || "No se pudieron guardar los cambios");
+      notifySave("Configuración de seguridad guardada correctamente.");
     } catch (err) {
       console.error(err);
+      window.alert(err instanceof Error ? err.message : "Error guardando la configuración");
     } finally {
       setSaving(false);
     }
@@ -234,9 +237,12 @@ export default function BotControlDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(welcome),
       });
-      if (res.ok) notifySave("¡Configuración de bienvenidas guardada exitosamente!");
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.fields ? Object.values(result.fields).flat().join(". ") || result.error : result.error || "No se pudieron guardar los cambios");
+      notifySave("Configuración de bienvenidas guardada correctamente.");
     } catch (err) {
       console.error(err);
+      window.alert(err instanceof Error ? err.message : "Error guardando la configuración");
     } finally {
       setSaving(false);
     }
