@@ -325,6 +325,7 @@ export default function BotControlDashboardPage() {
       )}
 
       <Link href="/dashboard/bots/configuracion" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-500">⚙ Configurar mi bot (token e ID de cliente)</Link>
+      <Link href="/dashboard/bots/tickets" className="ml-3 inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🎫 Configurar paneles y tickets</Link>
       {/* Header & Server Selector */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800">
         <div>
