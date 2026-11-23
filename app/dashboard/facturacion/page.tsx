@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   CreditCard,
@@ -19,6 +19,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export default function FacturacionPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
+
+  useEffect(() => { fetch("/api/customer/overview", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("Error"); return r.json(); }).then(d => { setSubscriptions(d.subscriptions || []); setInvoices(d.invoices || []); }).catch(() => console.error("No se pudo cargar la facturación")); }, []);
 
   const [loadingPortal, setLoadingPortal] = useState(false);
 
@@ -85,7 +87,7 @@ export default function FacturacionPage() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    Próxima renovación automática:{" "}
+                    {sub.cancelAtPeriodEnd ? "Finaliza el:" : "Vencimiento del período:"}{" "}
                     <span className="text-slate-200 font-medium">{formatDate(sub.renewalDate)}</span>
                   </p>
                 </div>
