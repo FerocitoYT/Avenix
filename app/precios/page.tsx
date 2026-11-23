@@ -162,11 +162,7 @@ export default function PricingPage() {
                       <div className="pt-4 border-t border-slate-800/80">
                         {isAvailable ? (
                           <Link
-                            href={
-                              price.billingType === "RECURRING"
-                                ? `/dashboard?subscribe=${price.id}`
-                                : `/presupuesto?producto=${product.slug}&tarifa=${price.id}`
-                            }
+                            href={`/checkout?plan=${price.id}`}
                             className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                               price.isPopular
                                 ? "bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20"

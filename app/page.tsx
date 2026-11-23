@@ -295,7 +295,7 @@ export default function HomePage() {
               </div>
 
               <Link
-                href="/dashboard?plan=bot_mensual_9"
+                href="/checkout?plan=price-bot-monthly"
                 className="w-full text-center py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
               >
                 <span>Contratar por 9 € / mes</span>
@@ -356,7 +356,7 @@ export default function HomePage() {
               </div>
 
               <Link
-                href="/dashboard?plan=bot_anual_70"
+                href="/checkout?plan=price-bot-annual"
                 className="w-full text-center py-3.5 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
               >
                 <span>Contratar por 70 € / año</span>

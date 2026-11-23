@@ -138,7 +138,7 @@ export function Navbar() {
               </Link>
 
               <Link
-                href="/presupuesto"
+                href="/checkout?plan=price-bot-monthly"
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-md shadow-blue-600/25 transition-all hover:scale-[1.02]"
               >
                 <Sparkles className="w-4 h-4 text-blue-200" />

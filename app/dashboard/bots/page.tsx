@@ -131,7 +131,7 @@ export default function BotManagementPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
-              href="/#tarifas"
+              href="/checkout?plan=price-bot-monthly"
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
             >
               <span>Contratar Avenix Bot (9 €/mes)</span>
