@@ -35,9 +35,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   if (!parsed.success) return NextResponse.json({ error: "ID de aplicación, servidor o token inválidos" }, { status: 400 });
   const { clientId, guildId, token } = parsed.data;
   if (token && !process.env.ENCRYPTION_MASTER_KEY) return NextResponse.json({ error: "Falta ENCRYPTION_MASTER_KEY en el servidor" }, { status: 503 });
+  const bot = result.bot!;
+  const credentialsChanged = bot.botClientId !== clientId || bot.guildId !== guildId || Boolean(token);
+  const mustStart = bot.status === "STOPPED" || bot.status === "ERROR";
+  const needsReconnect = credentialsChanged || mustStart;
   await prisma.$transaction(async tx => {
-    await tx.botInstance.update({ where: { id: params.id }, data: { botClientId: clientId, guildId, status: "RESTARTING" } });
-    await tx.botConfiguration.upsert({ where: { botInstanceId: params.id }, create: { botInstanceId: params.id, ...(token ? { tokenSecretRef: encryptSecret(token) } : {}) }, update: token ? { tokenSecretRef: encryptSecret(token) } : {} });
+    if (credentialsChanged) {
+      await tx.botInstance.update({ where: { id: params.id }, data: { botClientId: clientId, guildId, status: "RESTARTING" } });
+    } else if (mustStart) {
+      await tx.botInstance.update({ where: { id: params.id }, data: { status: "RESTARTING" } });
+    }
+    await tx.botConfiguration.upsert({
+      where: { botInstanceId: params.id },
+      create: { botInstanceId: params.id, ...(token ? { tokenSecretRef: encryptSecret(token) } : {}) },
+      update: token ? { tokenSecretRef: encryptSecret(token) } : {},
+    });
   });
-  return NextResponse.json({ success: true, status: "RESTARTING", message: "Configuración guardada. Inicio solicitado; Discloud confirmará cuando el bot se conecte." });
+  return NextResponse.json({ success: true, status: needsReconnect ? "RESTARTING" : bot.status,
+    message: needsReconnect ? "Configuración guardada. El host procesará el inicio o la reconexión." : "Configuración guardada sin reiniciar el bot." });
 }
