@@ -123,7 +123,7 @@ export default function BotControlDashboardPage() {
         const response = await fetch("/api/client/bot-config", { cache: "no-store" });
         if (!response.ok) throw new Error("Status unavailable");
         const data = await response.json();
-        const bot = data.services?.find((s: any) => s.bot?.guildId === selectedGuildId)?.bot || data.services?.find((s: any) => s.bot)?.bot;
+        const bot = selectedGuildId ? data.services?.find((s: any) => s.bot?.guildId === selectedGuildId)?.bot : data.services?.find((s: any) => s.bot)?.bot;
         if (active) setHostStatus(bot ? { status: bot.observedStatus || "OFFLINE", lastPingAt: bot.lastPingAt } : null);
       } catch { if (active) setHostStatus(null); }
     };
