@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
+import { deliverOrderEmbed, eventAllowed, reserveDelivery, finishDelivery, type IntegrationConfig } from "@/lib/integrations/discord-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,53 +52,19 @@ export async function POST(request: Request, { params }: { params: { integration
 
   const deliveryId = request.headers.get("x-wc-webhook-delivery-id");
   if (!deliveryId || !/^\d{1,32}$/.test(deliveryId)) return json("Identificador de entrega inválido", 400);
+  const config = entry.value as IntegrationConfig;
+  if (!eventAllowed(config, topic, order)) return NextResponse.json({ success: true, filtered: true });
   const dedupeKey = `integration:wc:delivery:${params.integrationId}:${deliveryId}`;
-  const prior = await prisma.setting.findUnique({ where: { key: dedupeKey } });
-  if (prior?.value === "sent") return NextResponse.json({ success: true, duplicate: true });
-  // Reserve before sending to avoid duplicate simultaneous notifications.
-  if (!prior) {
-    try {
-      await prisma.setting.create({ data: { key: dedupeKey, value: "processing", category: "WC_DELIVERY" } });
-    } catch { return json("Entrega en curso, reintentar", 503); }
-  } else {
-    // A retry can recover after a transient Discord error or a crashed invocation.
-    if (prior.value === "processing" && Date.now() - prior.updatedAt.getTime() < 120_000) return json("Entrega en curso, reintentar", 503);
-    await prisma.setting.update({ where: { key: dedupeKey }, data: { value: "processing" } });
-  }
-
-  const orderId = str(order.number || order.id, 40);
-  const currency = str(order.currency, 8);
-  const total = str(order.total, 30);
-  const status = str(order.status, 60);
-  const fields = [
-    { name: "Pedido", value: orderId || "Sin ID", inline: true },
-    { name: "Estado", value: status || "Desconocido", inline: true },
-    { name: "Importe", value: `${total || "—"} ${currency}`, inline: true },
-  ];
-  const payload = {
-    allowed_mentions: { parse: [] },
-    embeds: [{
-      title: topic === "order.created" ? "🛒 Nuevo pedido" : topic === "order.deleted" ? "🗑️ Pedido eliminado" : "📦 Pedido actualizado",
-      description: `Tienda: ${str(entry.value.storeName, 100)}`,
-      color: topic === "order.created" ? 0x22c55e : 0x5865f2,
-      fields,
-      footer: { text: "Axyon Control · WooCommerce" },
-      timestamp: new Date().toISOString(),
-    }],
-  };
+  const reservation = await reserveDelivery(dedupeKey);
+  if (reservation === "duplicate") return NextResponse.json({ success: true, duplicate: true });
+  if (reservation === "busy") return json("Entrega en curso, reintentar", 503);
   try {
-    const destination = decryptSecret(entry.value.discordWebhookEncrypted);
-    const response = await fetch(destination, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload), signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) throw new Error(`Discord HTTP ${response.status}`);
-    await prisma.setting.update({ where: { key: dedupeKey }, data: { value: "sent" } });
+    await deliverOrderEmbed(config, topic, order);
+    await finishDelivery(dedupeKey, true);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[WooCommerce] Error entregando aviso", error);
-    // Preserve retry opportunity without disclosing Discord secrets.
-    await prisma.setting.deleteMany({ where: { key: dedupeKey, value: "processing" } });
+    await finishDelivery(dedupeKey, false);
     return json("No se pudo entregar el aviso, reintentar", 503);
   }
 }
