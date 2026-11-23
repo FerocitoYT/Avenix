@@ -13,7 +13,7 @@ export async function GET() {
    prisma.invoice.findMany({where:{userId:user.id},orderBy:{createdAt:"desc"}}),
    prisma.order.findMany({where:{userId:user.id},orderBy:{createdAt:"desc"},take:5}),
    prisma.supportTicket.count({where:{userId:user.id,status:{in:["OPEN","IN_PROGRESS","WAITING_CLIENT"]}}}),
-   prisma.notification.findMany({where:{userId:user.id},orderBy:{createdAt:"desc"},take:5}})
+   prisma.notification.findMany({where:{userId:user.id},orderBy:{createdAt:"desc"},take:5})
   ]);
   const activeSubscriptions=subscriptions.filter(s=>["ACTIVE","TRIALING"].includes(s.status)&&s.currentPeriodEnd>now);
   const activeIds=new Set(activeSubscriptions.map(s=>s.serviceId).filter(Boolean));
