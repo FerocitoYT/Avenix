@@ -22,11 +22,12 @@ export default function IntegrationsPage(){
  useEffect(()=>{if(!botId)return;setSigningSecret("");setWebhookPath("");fetch(`/api/bots/${botId}/integrations/woocommerce`,{cache:"no-store"}).then(r=>r.json()).then(d=>{
   setConfigured(Boolean(d.configured));setStoreName(d.storeName||"");setEnabled(d.enabled??true);
   if(d.webhookUrl)setWebhookPath(d.webhookUrl);
+  if(Array.isArray(d.rules))setRules(d.rules);
  }).catch(()=>setError("No se pudo consultar la integración"));},[botId]);
  const save=async()=>{
   setSaving(true);setError("");setMessage("");
   try{
-   const response=await fetch(`/api/bots/${botId}/integrations/woocommerce`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({storeName,discordWebhookUrl,enabled})});
+   const response=await fetch(`/api/bots/${botId}/integrations/woocommerce`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({storeName,discordWebhookUrl,enabled,rules})});
    const data=await response.json();
    if(!response.ok)throw new Error(data.error||"No se pudo guardar");
    setConfigured(true);setSigningSecret(data.signingSecret);
@@ -44,6 +45,7 @@ export default function IntegrationsPage(){
    <label className="block text-sm space-y-2">Nombre de la tienda<input className="block w-full bg-slate-950 border border-slate-700 rounded-lg p-3" value={storeName} onChange={e=>setStoreName(e.target.value)} placeholder="Mi tienda"/></label>
    <label className="block text-sm space-y-2">URL del webhook de Discord (canal de avisos)<input type="password" autoComplete="off" className="block w-full bg-slate-950 border border-slate-700 rounded-lg p-3" value={discordWebhookUrl} onChange={e=>setDiscordWebhookUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/…"/></label>
    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/> Integración activa</label>
+   <div className="space-y-2"><p className="text-sm font-semibold">Avisos que quieres recibir</p>{rules.map((rule,i)=><label key={rule.event} className="flex items-center gap-3 text-sm"><input type="checkbox" checked={rule.enabled} onChange={e=>setRules(old=>old.map((r,j)=>j===i?{...r,enabled:e.target.checked}:r))}/>{rule.event==="order.created"?"Nuevo pedido":rule.event==="order.updated"?"Pedido actualizado":"Pedido eliminado"}</label>)}</div>
    <p className="text-xs text-amber-300">Guardar vuelve a generar el secreto de firma. Tendrás que actualizarlo en los webhooks de WooCommerce.</p>
    <button disabled={saving||!botId||!storeName.trim()||!discordWebhookUrl} onClick={()=>void save()} className="rounded-lg bg-indigo-600 px-5 py-3 font-semibold disabled:opacity-50">{saving?"Guardando…":configured?"Actualizar y rotar secreto":"Crear integración"}</button>
    {error&&<p role="alert" className="text-red-400">{error}</p>}
@@ -51,6 +53,7 @@ export default function IntegrationsPage(){
    {webhookPath&&<div className="space-y-2"><p className="text-sm font-semibold">URL de entrega para WooCommerce</p><code className="block break-all rounded-lg bg-slate-950 p-3 text-xs">{webhookPath}</code><button onClick={()=>navigator.clipboard.writeText(webhookPath)} className="text-indigo-400 text-sm">Copiar URL</button></div>}
    {signingSecret&&<div className="rounded-lg border border-amber-700 bg-amber-950/30 p-4 space-y-2"><strong>Secreto de firma (solo se muestra ahora)</strong><code className="block break-all text-xs">{signingSecret}</code><button className="text-indigo-300 text-sm" onClick={()=>navigator.clipboard.writeText(signingSecret)}>Copiar secreto</button></div>}
   </section>
+  <Link href="/dashboard/bots/integraciones/api" className="inline-flex rounded-xl bg-slate-800 border border-slate-700 px-5 py-3 text-sm font-semibold">Conectar API personalizada → Discord</Link>
   <section className="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-3">
    <h2 className="font-bold">Configurar en WordPress</h2>
    <ol className="list-decimal pl-6 space-y-2 text-sm text-slate-300">
