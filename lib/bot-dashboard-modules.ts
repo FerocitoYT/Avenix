@@ -35,6 +35,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
   { key:"analytics",label:"Estadísticas del servidor",shortLabel:"Estadísticas",description:"Actividad diaria y métricas del servidor.",icon:"activity",group:"DISCORD",order:38,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=analytics` },
   { key:"scheduled-messages",label:"Mensajes programados",shortLabel:"Programación",description:"Mensajes automáticos y recurrentes.",icon:"history",group:"AUTOMATION",order:75,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=scheduled-messages` },
   { key:"invites",label:"Seguimiento de invitaciones",shortLabel:"Invitaciones",description:"Historial y clasificación de invitadores.",icon:"user-check",group:"DISCORD",order:39,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=invites` },
+  { key:"events",label:"Eventos y recordatorios",shortLabel:"Eventos",description:"Agenda, recordatorios y confirmaciones de asistencia.",icon:"history",group:"AUTOMATION",order:76,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=events` },
   {
     key: "tickets", label: "Tickets", shortLabel: "Tickets",
     description: "Paneles, categorías, formularios, roles de soporte y mensajes.",
