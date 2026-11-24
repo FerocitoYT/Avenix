@@ -1,3 +1,4 @@
+import {headers,cookies} from "next/headers";
 import {LanguageProvider} from "@/components/language-provider";
 import {CookieNotice} from "@/components/cookie-notice";
 import type { Metadata, Viewport } from "next";
@@ -55,11 +56,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const h=headers();const saved=cookies().get("axyon_language")?.value;
+  const country=(h.get("x-vercel-ip-country")||"").toUpperCase();
+  const spanish=new Set(["ES","MX","AR","BO","CL","CO","CR","CU","DO","EC","SV","GQ","GT","HN","NI","PA","PY","PE","PR","UY","VE"]);
+  const english=new Set(["US","GB","IE","AU","NZ","CA","JM","TT","BB","BS","BZ","GY","AG","DM","GD","KN","LC","VC"]);
+  const preferred=(h.get("accept-language")||"").split(",").map(s=>{const [tag,...params]=s.trim().split(";");const q=params.find(p=>p.trim().startsWith("q="));return {lang:tag.toLowerCase().split("-")[0],q:q?Number(q.trim().slice(2)):1}}).filter(x=>x.q>0&&["es","en"].includes(x.lang)).sort((a,b)=>b.q-a.q)[0]?.lang;
+  const lang=saved==="es"||saved==="en"?saved:spanish.has(country)?"es":english.has(country)?"en":preferred==="es"?"es":"en";
   return (
-    <html lang="es" className="dark">
+    <html lang={lang} className="dark">
       <body className="font-sans antialiased bg-[#0B1220] text-[#F8FAFC] min-h-screen selection:bg-blue-500/30 selection:text-white">
         <div className="relative flex min-h-screen flex-col">
-          <LanguageProvider>{children}
+          <LanguageProvider initialLanguage={lang}>{children}
           <CookieNotice /></LanguageProvider>
         </div>
       </body>
