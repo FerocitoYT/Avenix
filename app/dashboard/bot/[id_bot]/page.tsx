@@ -59,6 +59,7 @@ export default function BotInstanceDashboardPage() {
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [moduleSearch,setModuleSearch]=useState("");
   const modules = useMemo(() => orderedBotDashboardModules(), []);
 
   useEffect(() => {
@@ -97,7 +98,7 @@ export default function BotInstanceDashboardPage() {
 
   const observed = service.bot?.observedStatus || service.bot?.status || "OFFLINE";
   const connected = observed === "RUNNING";
-  return <main className="mx-auto max-w-7xl p-6 md:p-10 text-white space-y-8">
+  return <main className="mx-auto w-full min-w-0 max-w-7xl p-4 md:p-10 text-white space-y-6">
     <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5 border-b border-slate-800 pb-6">
       <div className="flex items-start gap-4">
         {service.bot?.guildId && service.bot?.guildIcon ? <img src={service.bot.guildIcon.startsWith("http") ? service.bot.guildIcon : `https://cdn.discordapp.com/icons/${service.bot.guildId}/${service.bot.guildIcon}.png?size=128`} alt={service.bot.guildName || "Servidor de Discord"} className="w-12 h-12 rounded-2xl border border-slate-700 object-cover"/> : <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Bot className="w-6 h-6"/></div>}
@@ -117,14 +118,14 @@ export default function BotInstanceDashboardPage() {
       </div>
     </div>
 
-    <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    {selectedModule.key==="overview"&&<section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><Server className="w-4 h-4"/>Servidor</div><p className="mt-3 text-sm font-semibold break-all">{service.bot?.guildId || "Sin configurar"}</p></div>
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><CreditCard className="w-4 h-4"/>Renovación</div><p className="mt-3 text-sm font-semibold">{service.expiresAt ? new Date(service.expiresAt).toLocaleDateString("es-ES") : "Sin fecha"}</p></div>
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><CheckCircle2 className="w-4 h-4"/>Token</div><p className="mt-3 text-sm font-semibold">{service.bot?.tokenConfigured ? "Configurado y cifrado" : "Pendiente"}</p></div>
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><Clock3 className="w-4 h-4"/>Heartbeat</div><p className="mt-3 text-sm font-semibold">{service.bot?.lastPingAt ? new Date(service.bot.lastPingAt).toLocaleString("es-ES") : "Sin datos"}</p></div>
-    </section>
+    </section>}
 
-    <section className="space-y-5">
+    <section className="min-w-0 space-y-5">
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
         <div className="flex items-start gap-4">
           {(() => { const Icon = icons[selectedModule.icon] || Settings; return <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Icon className="w-5 h-5"/></div>; })()}
@@ -137,11 +138,11 @@ export default function BotInstanceDashboardPage() {
       </div>
 
       {selectedModule.key === "overview" ? (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {modules.filter(module => module.key !== "overview").map(module => {
+        <div className="space-y-5"><label className="block text-sm text-slate-400">Buscar entre {modules.length-1} módulos<input value={moduleSearch} onChange={e=>setModuleSearch(e.target.value)} placeholder="Encuestas, invitaciones, eventos…" className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-base text-white"/></label><div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {modules.filter(module => module.key !== "overview" && (module.label+" "+module.description).toLowerCase().includes(moduleSearch.trim().toLowerCase())).map(module => {
             const Icon = icons[module.icon] || Settings;
             const disabled = module.requiresGuild && !service.bot?.guildId;
-            const managerHref = `/dashboard/bot/${botId}?section=${encodeURIComponent(module.key)}`;
+            const managerHref = module.href(botId, service.bot?.guildId);
             return <Link key={module.key} href={disabled ? "#" : managerHref} aria-disabled={disabled}
               className={`rounded-2xl border bg-[#111827] p-5 transition-all ${disabled ? "border-slate-800 opacity-40 pointer-events-none" : "border-slate-800 hover:border-blue-500/40 hover:-translate-y-0.5"}`}>
               <div className="flex items-start justify-between gap-4">
@@ -152,11 +153,11 @@ export default function BotInstanceDashboardPage() {
               <p className="mt-2 text-xs leading-relaxed text-slate-400">{module.description}</p>
             </Link>;
           })}
-        </div>
+        </div></div>
       ) : (
-        <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
+        <div className="rounded-2xl border border-slate-800 bg-[#111827] p-3 sm:p-6 space-y-4 min-w-0">
           <p className="text-sm text-slate-300">Estás administrando exclusivamente <strong>{service.name}</strong>. Los cambios de esta sección se aplican únicamente a esta instancia.</p>
-          {selectedModule.key === "deliveries" ? (
+          {selectedModule.requiresGuild&&!service.bot?.guildId ? (<div className="rounded-xl border border-amber-800 p-4 text-sm">Vincula primero un servidor de Discord. <Link className="text-blue-400 underline" href={modules.find(m=>m.key==="credentials")!.href(botId)}>Configurar servidor</Link></div>) : selectedModule.key === "deliveries" ? (
             <BotDeliveriesPanel botId={botId} />
           ) : selectedModule.key === "absences" && service.bot?.guildId ? (
             <BotAbsencePanel guildId={service.bot.guildId} />
