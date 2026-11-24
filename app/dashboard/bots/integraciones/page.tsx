@@ -39,6 +39,7 @@ export default function IntegrationsPage(){
  };
  return <main className="mx-auto max-w-4xl p-6 text-white space-y-6">
   <Link href="/dashboard/bots" className="text-sm text-indigo-400">← Volver al panel</Link>
+  <Link href="/dashboard/bots/integraciones/historial" className="inline-flex rounded-xl bg-slate-800 border border-slate-700 px-5 py-3 text-sm font-semibold">📦 Historial de entregas y reintentos</Link>
   <div><h1 className="text-3xl font-bold">Integraciones · Ecommerce</h1><p className="mt-2 text-slate-400">Conecta una tienda WordPress con WooCommerce a Discord. Cada pedido genera un aviso con formato embed, sin reiniciar el bot.</p></div>
   <section className="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
    <h2 className="text-xl font-bold">WooCommerce → Discord</h2>
