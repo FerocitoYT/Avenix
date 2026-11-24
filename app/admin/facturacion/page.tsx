@@ -23,7 +23,7 @@ interface InvoiceRecord {
   vatAmountCents: number;
   totalAmountCents: number;
   status: "DRAFT" | "ISSUED" | "PAID" | "VOID";
-  paymentProvider: "STRIPE" | "BANK_TRANSFER" | "MANUAL";
+  paymentProvider: "STRIPE" | "PAYPAL" | "BANK_TRANSFER" | "MANUAL";
   stripeVerified: boolean;
   createdAt: string;
 }
@@ -50,17 +50,6 @@ export default function AdminFacturacionPage() {
     loadInvoices();
   }, []);
 
-  const handleVerifyStripe = async (id: string) => {
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === id
-          ? { ...inv, status: "PAID", stripeVerified: true }
-          : inv
-      )
-    );
-    setToast("Pago verificado exitosamente mediante Webhook/API de Stripe.");
-    setTimeout(() => setToast(null), 3000);
-  };
 
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">
@@ -70,7 +59,7 @@ export default function AdminFacturacionPage() {
             Facturación Oficial y Registro de Pagos
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Numeración correlativa con IVA del 21% desglosado y verificación obligatoria en servidor para Stripe.
+            Facturas propias de Axyon y pagos registrados por el servidor.
           </p>
         </div>
       </div>
@@ -91,7 +80,7 @@ export default function AdminFacturacionPage() {
                 <th className="pb-3">Cliente</th>
                 <th className="pb-3">Concepto</th>
                 <th className="pb-3">Base</th>
-                <th className="pb-3">IVA 21%</th>
+                <th className="pb-3">Impuestos</th>
                 <th className="pb-3">Total</th>
                 <th className="pb-3">Verificación</th>
                 <th className="pb-3 pr-2 text-right">Acciones</th>
@@ -118,28 +107,22 @@ export default function AdminFacturacionPage() {
                       {inv.stripeVerified ? (
                         <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">
                           <ShieldCheck className="w-3 h-3" />
-                          Stripe Verificado
+                          {inv.paymentProvider === "STRIPE" ? "Stripe · Pagada" : inv.paymentProvider === "PAYPAL" ? "PayPal · Pagada" : "Pagada"}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase">
                           <Clock className="w-3 h-3" />
-                          Pendiente Servidor
+                          {inv.status}
                         </span>
                       )}
                     </td>
                     <td className="py-3.5 pr-2 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {!inv.stripeVerified && (
-                          <button
-                            onClick={() => handleVerifyStripe(inv.id)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold"
-                          >
-                            Verificar Stripe
-                          </button>
-                        )}
+                        
                         <button
-                          onClick={() => alert(`Descargando factura legal oficial ${inv.invoiceNumber}`)}
-                          className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800"
+                          disabled={inv.status !== "PAID"}
+                          onClick={() => window.open("/api/customer/invoices/"+encodeURIComponent(inv.id),"_blank","noopener,noreferrer")}
+                          className="disabled:opacity-40 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800"
                           title="Descargar PDF"
                         >
                           <Download className="w-3.5 h-3.5" />
