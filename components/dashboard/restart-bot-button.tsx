@@ -1,0 +1,9 @@
+"use client";
+import {useState} from "react";
+import {RotateCw} from "lucide-react";
+import {useLanguage} from "@/components/language-provider";
+export function RestartBotButton({id,disabled=false,onRequested}:{id:string;disabled?:boolean;onRequested?:()=>void}){
+ const {t}=useLanguage();const [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[failed,setFailed]=useState(false);
+ async function restart(){if(!window.confirm(t("¿Reiniciar únicamente este bot?","Restart only this bot?")))return;setBusy(true);setMessage("");setFailed(false);try{const r=await fetch("/api/client/bots/"+encodeURIComponent(id)+"/restart",{method:"POST"});const d=await r.json();if(!r.ok){throw Error(d.error==="ALREADY_PENDING"?t("Ya hay un reinicio pendiente.","A restart is already pending."):d.error==="MAINTENANCE"?t("Mantenimiento activo.","Maintenance is active."):d.error==="NOT_CONFIGURED"?t("Configura primero el bot.","Configure the bot first."):t("No se pudo solicitar el reinicio.","Could not request restart."))}setMessage(t("Reinicio solicitado. El host confirmará la conexión.","Restart requested. The host will confirm connection."));onRequested?.()}catch(e){setFailed(true);setMessage(e instanceof Error?e.message:t("Error de conexión","Connection error"))}finally{setBusy(false)}}
+ return <div className="space-y-1"><button disabled={disabled||busy} onClick={()=>void restart()} className="inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-40"><RotateCw className={"w-4 h-4 "+(busy?"animate-spin":"")}/>{busy?t("Solicitando…","Requesting…"):t("Reiniciar bot","Restart bot")}</button>{message&&<p role="status" className={"text-xs "+(failed?"text-red-400":"text-blue-300")}>{message}</p>}</div>
+}
