@@ -27,7 +27,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     key: "security", label: "Seguridad y moderación", shortLabel: "Seguridad",
     description: "Antispam, antiraid, simulación y registros de moderación.",
     icon: "shield", group: "DISCORD", order: 30, requiresGuild: true,
-    href: (botId, guildId) => `/dashboard/bots/editor?botId=${encodeURIComponent(botId)}&section=security${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
+    href: botId => `/dashboard/bot/${botId}?section=security`,
   },
   {
     key: "tickets", label: "Tickets", shortLabel: "Tickets",

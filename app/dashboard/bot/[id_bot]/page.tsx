@@ -12,10 +12,11 @@ import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
 import { BotDeliveriesPanel } from "@/components/dashboard/bot-deliveries-panel";
 import { BotStudioPanel } from "@/components/dashboard/bot-studio-panel";
 import { BotVerificationPanel } from "@/components/dashboard/bot-verification-panel";
+import { BotSecurityPanel } from "@/components/dashboard/bot-security-panel";
 
 type Service = {
   id: string; name: string; planName: string; subscriptionActive: boolean; expiresAt: string | null;
-  bot: { id: string; applicationId: string | null; guildId: string | null; status: string; observedStatus?: string; lastPingAt?: string | null; tokenConfigured: boolean } | null;
+  bot: { id: string; applicationId: string | null; guildId: string | null; guildName?: string | null; guildIcon?: string | null; serverLimit?: number; status: string; observedStatus?: string; lastPingAt?: string | null; tokenConfigured: boolean } | null;
 };
 
 const icons: Record<string, any> = {
@@ -89,7 +90,7 @@ export default function BotInstanceDashboardPage() {
   return <main className="mx-auto max-w-7xl p-6 md:p-10 text-white space-y-8">
     <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5 border-b border-slate-800 pb-6">
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Bot className="w-6 h-6"/></div>
+        {service.bot?.guildId && service.bot?.guildIcon ? <img src={service.bot.guildIcon.startsWith("http") ? service.bot.guildIcon : `https://cdn.discordapp.com/icons/${service.bot.guildId}/${service.bot.guildIcon}.png?size=128`} alt={service.bot.guildName || "Servidor de Discord"} className="w-12 h-12 rounded-2xl border border-slate-700 object-cover"/> : <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Bot className="w-6 h-6"/></div>}
         <div>
           <Link href="/dashboard/bots" className="text-xs text-blue-400">Gestión de Bots /</Link>
           <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold">{service.name}</h1>
@@ -147,6 +148,8 @@ export default function BotInstanceDashboardPage() {
           <p className="text-sm text-slate-300">Estás administrando exclusivamente <strong>{service.name}</strong>. Los cambios de esta sección se aplican únicamente a esta instancia.</p>
           {selectedModule.key === "deliveries" ? (
             <BotDeliveriesPanel botId={botId} />
+          ) : selectedModule.key === "security" && service.bot?.guildId ? (
+            <BotSecurityPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "verification" && service.bot?.guildId ? (
             <BotVerificationPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "studio" && service.bot?.guildId ? (

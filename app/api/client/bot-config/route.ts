@@ -22,6 +22,9 @@ export async function GET() {
     include: {subscriptions:true,botInstance:{include:{configuration:true}}},
     orderBy:{createdAt:"desc"}
   });
+  const guildIds = services.flatMap(s => s.botInstance?.guildId ? [s.botInstance.guildId] : []);
+  const guilds = guildIds.length ? await prisma.guild.findMany({ where: { id: { in: guildIds } }, select: { id:true,name:true,icon:true } }) : [];
+  const guildMap = new Map(guilds.map(g => [g.id,g]));
   return NextResponse.json({success:true,services:services.map(s=>({
     id:s.id,name:s.name,planName:s.planName,
     subscriptionActive:s.subscriptions.some(active),
@@ -31,6 +34,9 @@ export async function GET() {
       lastPingAt: s.botInstance.lastPingAt,
       id:s.botInstance.id,applicationId:s.botInstance.botClientId,
       guildId:s.botInstance.guildId,status:s.botInstance.status,
+      guildName:s.botInstance.guildId?guildMap.get(s.botInstance.guildId)?.name??null:null,
+      guildIcon:s.botInstance.guildId?guildMap.get(s.botInstance.guildId)?.icon??null:null,
+      serverLimit:1+s.botInstance.additionalGuildSlots,
       tokenConfigured:!!s.botInstance.configuration?.tokenSecretRef
     }:null
   }))});

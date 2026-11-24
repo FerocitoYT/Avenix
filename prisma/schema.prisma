@@ -449,6 +449,8 @@ model BotInstance {
   name             String
   botClientId      String?
   guildId          String?
+  additionalGuildSlots Int      @default(0)
+  allowedGuildIds  String[]     @default([])
   status           BotStatus         @default(STOPPED)
   nodeHost         String?           @default("eu-node-01.avenix.dev")
   memoryLimitMb    Int               @default(512)
@@ -784,8 +786,16 @@ model SecurityConfig {
   guildId              String   @unique
   logChannelId         String?
   antispamEnabled      Boolean  @default(true)
+  spamThreshold        Int      @default(6)
+  spamTimeWindowSeconds Int     @default(5)
+  repeatThreshold      Int      @default(4)
+  automodAction        String   @default("TIMEOUT")
+  automodTimeoutSeconds Int     @default(300)
+  simulationMode       Boolean  @default(false)
   antiraidEnabled      Boolean  @default(false)
   antiraidJoinThreshold Int     @default(10)
+  raidWindowSeconds    Int      @default(10)
+  raidAction           String   @default("TIMEOUT")
   antiMassMentionCount Int      @default(5)
   blockInviteLinks     Boolean  @default(true)
   blockAllLinks        Boolean  @default(false)
