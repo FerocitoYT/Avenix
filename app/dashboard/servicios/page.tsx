@@ -65,7 +65,7 @@ export default function MisServiciosPage() {
                     <h3 className="text-base font-bold text-white font-display">
                       {service.name}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${service.isActive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-300 border-amber-500/20"}`}>
                       {service.statusLabel}
                     </span>
                   </div>
@@ -78,7 +78,7 @@ export default function MisServiciosPage() {
                   <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-1">
                     <span>Alta: {formatDate(service.hiringDate)}</span>
                     <span>•</span>
-                    <span>Próxima renovación: {formatDate(service.renewalDate)}</span>
+                    <span>{service.isActive ? <>Próxima renovación: {formatDate(service.renewalDate)}</> : "Sin renovación activa"}</span>
                     <span>•</span>
                     <span>Servidor: {service.node}</span>
                   </div>
@@ -95,13 +95,19 @@ export default function MisServiciosPage() {
 
                 <div className="flex items-center gap-2">
                   {service.type === "DISCORD_BOT" ? (
-                    <Link
-                      href="/dashboard/bots/configurar"
-                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>Controlar Bot</span>
-                    </Link>
+                    service.isActive && service.botId ? (
+                      <Link
+                        href={`/dashboard/bot/${service.botId}`}
+                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>Controlar Bot</span>
+                      </Link>
+                    ) : (
+                      <span className="px-3.5 py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-semibold">
+                        Servicio finalizado
+                      </span>
+                    )
                   ) : (
                     <Link
                       href="/dashboard/facturacion"
