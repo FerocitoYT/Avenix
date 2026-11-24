@@ -28,7 +28,7 @@ export async function GET() {
         vatAmountCents: inv.vatAmountCents,
         totalAmountCents: inv.totalAmountCents,
         status: inv.status,
-        paymentProvider: inv.stripePaymentIntentId ? "STRIPE" : "MANUAL",
+        paymentProvider: inv.stripePaymentIntentId?.startsWith("PAYPAL-") ? "PAYPAL" : inv.stripePaymentIntentId || inv.stripeInvoiceId ? "STRIPE" : "MANUAL",
         stripeVerified: inv.status === "PAID",
         createdAt: inv.createdAt.toISOString(),
       })),
