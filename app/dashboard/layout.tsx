@@ -49,7 +49,7 @@ function DashboardLayoutInner({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [maintenance,setMaintenance]=useState<{mode:string;until:number;reason:string}|null>(null);
+  const [maintenance,setMaintenance]=useState<{mode:string;until:number|null;reason:string}|null>(null);
   const [maintenanceChecked,setMaintenanceChecked]=useState(false);
   useEffect(()=>{let active=true;let busy=false;const check=async()=>{if(busy)return;busy=true;try{const r=await fetch("/api/maintenance",{cache:"no-store"});if(!r.ok)throw Error("Estado no disponible");const d=await r.json();if(active){setMaintenance(d);setMaintenanceChecked(true)}}catch{if(active)setMaintenanceChecked(false)}finally{busy=false}};void check();const timer=setInterval(()=>void check(),5000);return()=>{active=false;clearInterval(timer)}},[]);
   const [mobileOpen, setMobileOpen] = useState(false);
