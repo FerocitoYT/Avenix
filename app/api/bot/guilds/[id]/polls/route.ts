@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import {authorizeGuild} from "@/lib/bot-access";
 import {prisma} from "@/lib/prisma";
 import {NextResponse} from "next/server";
@@ -24,7 +25,7 @@ export async function GET(_r:Request,{params}:C){
  for(const r of votes){const v=JSON.parse(r.value);if(!Number.isInteger(v.option)||v.option<0||v.option>4)continue;const c=counts.get(v.pollId)||[0,0,0,0,0];c[v.option]++;counts.set(v.pollId,c);}
  return NextResponse.json({polls:polls.map(r=>{const p=JSON.parse(r.value);return {...p,counts:(counts.get(p.id)||[0,0,0,0,0]).slice(0,p.options.length)}}),limited:votes.length===10000,config:config?JSON.parse(config.value):{enabled:false,channelId:""},suggestions:suggestions.map(r=>JSON.parse(r.value))});
 }
-export async function POST(req:Request,{params}:C){
+async function handlePOST(req:Request,{params}:C){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const parsed=schema.safeParse(await req.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Datos inválidos"},{status:400});
  const d=parsed.data,g=params.id;
@@ -44,3 +45,5 @@ export async function POST(req:Request,{params}:C){
  }
  return NextResponse.json({success:true});
 }
+
+export const POST=withBotChange("polls",handlePOST);
