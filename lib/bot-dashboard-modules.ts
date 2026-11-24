@@ -37,6 +37,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
   { key:"invites",label:"Seguimiento de invitaciones",shortLabel:"Invitaciones",description:"Historial y clasificación de invitadores.",icon:"user-check",group:"DISCORD",order:39,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=invites` },
   { key:"events",label:"Eventos y recordatorios",shortLabel:"Eventos",description:"Agenda, recordatorios y confirmaciones de asistencia.",icon:"history",group:"AUTOMATION",order:76,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=events` },
   { key:"polls",label:"Encuestas y sugerencias",shortLabel:"Encuestas y sugerencias",description:"Votaciones y propuestas de la comunidad.",icon:"workflow",group:"DISCORD",order:40,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=polls` },
+  { key:"voice",label:"Canales de voz temporales",shortLabel:"Canales de voz",description:"Salas de voz automáticas y personalizadas.",icon:"settings",group:"DISCORD",order:41,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=voice` },
   {
     key: "tickets", label: "Tickets", shortLabel: "Tickets",
     description: "Paneles, categorías, formularios, roles de soporte y mensajes.",
