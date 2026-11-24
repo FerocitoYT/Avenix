@@ -70,6 +70,7 @@ export async function fulfillOrder(params: FulfillOrderParams) {
     );
   }
 
+  if (!Number.isSafeInteger(amountPaidCents) || amountPaidCents <= 0 || order.totalAmountCents !== amountPaidCents) throw new Error("Payment amount mismatch");
   const effectiveUserId = order.userId;
 
   // 2. Idempotency Check:
@@ -100,51 +101,21 @@ export async function fulfillOrder(params: FulfillOrderParams) {
   });
 
   // 4. Update or Create Invoice (mark as PAID)
-  const existingInvoice = await prisma.invoice.findFirst({
-    where: { orderId: order.id },
-  });
-
-  const totalCents = order.totalAmountCents || amountPaidCents;
+  const totalCents = order.totalAmountCents;
   const baseCents = Math.round(totalCents / 1.21);
   const vatCents = totalCents - baseCents;
-
-  let invoice = null;
-  if (existingInvoice) {
-    invoice = await prisma.invoice.update({
-      where: { id: existingInvoice.id },
-      data: {
-        status: "PAID",
-        paidAt: new Date(),
-        stripePaymentIntentId:
-          paymentGateway === "STRIPE"
-            ? gatewayTransactionId
-            : existingInvoice.stripePaymentIntentId || `PAYPAL-${gatewayTransactionId}`,
-      },
-    });
-  } else {
-    const year = new Date().getFullYear();
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const invoiceNumber = `FAC-${year}-${randomSuffix}`;
-
-    invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        userId: effectiveUserId,
-        orderId: order.id,
-        amountCents: baseCents,
-        vatAmountCents: vatCents,
-        totalAmountCents: totalCents,
-        status: "PAID",
-        paidAt: new Date(),
-        dueDate: new Date(),
-        currency: "EUR",
-        stripePaymentIntentId:
-          paymentGateway === "STRIPE"
-            ? gatewayTransactionId
-            : `PAYPAL-${gatewayTransactionId}`,
-      },
-    });
-  }
+  const paymentRef = paymentGateway === "STRIPE" ? gatewayTransactionId : "PAYPAL-" + gatewayTransactionId;
+  const invoice = await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(8242091)`;
+    const existing = await tx.invoice.findFirst({where:{orderId:order.id}});
+    if(existing?.status==="PAID")return existing;
+    if(existing)return tx.invoice.update({where:{id:existing.id},data:{status:"PAID",paidAt:new Date(),stripePaymentIntentId:paymentRef}});
+    const year = new Intl.DateTimeFormat("en",{year:"numeric",timeZone:"Europe/Madrid"}).format(new Date());
+    const prefix = "FAC-A-"+year+"-";
+    const rows=await tx.invoice.findMany({where:{invoiceNumber:{startsWith:prefix}},select:{invoiceNumber:true}});
+    const next=1+rows.reduce((max,r)=>Math.max(max,Number(r.invoiceNumber.slice(prefix.length))||0),0);
+    return tx.invoice.create({data:{invoiceNumber:prefix+String(next).padStart(6,"0"),userId:effectiveUserId,orderId:order.id,amountCents:baseCents,vatAmountCents:vatCents,totalAmountCents:totalCents,status:"PAID",paidAt:new Date(),dueDate:new Date(),currency:order.currency,stripePaymentIntentId:paymentRef}});
+  });
 
   // 5. Provision Service & BotInstance
   let service = existingService;
