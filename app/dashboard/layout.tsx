@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AvenixLogo } from "@/components/brand/logo";
@@ -41,7 +41,7 @@ interface DashboardUser {
   companyName?: string | null;
 }
 
-export default function DashboardLayout({
+function DashboardLayoutInner({
   children,
 }: {
   children: React.ReactNode;
@@ -316,5 +316,31 @@ export default function DashboardLayout({
         {children}
       </main>
     </div>
+  );
+}
+
+
+function DashboardLayoutFallback() {
+  return (
+    <div className="min-h-screen bg-[#0B1220] flex items-center justify-center text-slate-400">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold tracking-wider uppercase text-blue-400">
+          Cargando Avenix Control...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<DashboardLayoutFallback />}>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </Suspense>
   );
 }
