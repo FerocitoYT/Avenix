@@ -26,6 +26,16 @@ export default function AdminConfiguracionPage() {
     requireEmailVerification: true,
   });
 
+  const [issuer,setIssuer]=useState({name:"",taxId:"",address:""});
+  const [issuerReady,setIssuerReady]=useState(false);
+  const [issuerBusy,setIssuerBusy]=useState(false);
+  const [issuerMessage,setIssuerMessage]=useState("");
+  const [issuerError,setIssuerError]=useState(false);
+  useEffect(()=>{let live=true;fetch("/api/admin/invoice-issuer",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(live){setIssuer(d.issuer);setIssuerReady(true);}}).catch(()=>{if(live){setIssuerError(true);setIssuerMessage("No se pudo cargar la configuración fiscal.");}});return()=>{live=false};},[]);
+  async function saveIssuer(e:React.FormEvent){
+    e.preventDefault();setIssuerBusy(true);setIssuerMessage("");setIssuerError(false);
+    try{const r=await fetch("/api/admin/invoice-issuer",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(issuer)});const d=await r.json();if(!r.ok)throw Error(d.error||"No se pudo guardar");setIssuer(d.issuer);setIssuerMessage("Datos fiscales guardados correctamente.");}catch(e){setIssuerError(true);setIssuerMessage(e instanceof Error?e.message:"No se pudo guardar");}finally{setIssuerBusy(false);}
+  }
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
@@ -154,6 +164,13 @@ export default function AdminConfiguracionPage() {
             </div>
           </form>
 
+          <form id="facturacion" onSubmit={saveIssuer} className="p-6 sm:p-8 rounded-3xl bg-[#0B1220] border border-slate-800 space-y-5">
+            <h2 className="text-base font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-400"/>Datos fiscales de facturación</h2>
+            <p className="text-xs text-slate-400">Estos datos aparecerán en los PDF propios de Axyon para cualquier medio de pago. Los documentos con datos ya guardados no se modificarán.</p>
+            {([{key:"name",label:"Nombre fiscal o razón social",max:100},{key:"taxId",label:"NIF / CIF",max:40},{key:"address",label:"Domicilio fiscal completo",max:140}] as const).map(f=><label key={f.key} className="block text-xs text-slate-300 space-y-2"><span>{f.label}</span><input required maxLength={f.max} disabled={!issuerReady||issuerBusy} value={issuer[f.key]} onChange={e=>setIssuer(prev=>({...prev,[f.key]:e.target.value}))} className="w-full px-4 py-2.5 rounded-xl bg-[#111827] border border-slate-800 text-white disabled:opacity-50"/></label>)}
+            <button type="submit" disabled={!issuerReady||issuerBusy} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50 flex items-center gap-2"><Save className="w-4 h-4"/>{issuerBusy?"Guardando…":"Guardar datos fiscales"}</button>
+            {issuerMessage&&<p role="status" className={"text-xs "+(issuerError?"text-red-400":"text-emerald-400")}>{issuerMessage}</p>}
+          </form>
           {/* Security & Webhooks Status Box */}
           <div className="p-6 rounded-3xl bg-[#0B1220] border border-slate-800 space-y-4">
             <h3 className="text-sm font-bold text-white font-display flex items-center gap-2">
