@@ -11,6 +11,7 @@ import {
 import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
 import { BotDeliveriesPanel } from "@/components/dashboard/bot-deliveries-panel";
 import { BotStudioPanel } from "@/components/dashboard/bot-studio-panel";
+import { BotVerificationPanel } from "@/components/dashboard/bot-verification-panel";
 
 type Service = {
   id: string; name: string; planName: string; subscriptionActive: boolean; expiresAt: string | null;
@@ -146,6 +147,8 @@ export default function BotInstanceDashboardPage() {
           <p className="text-sm text-slate-300">Estás administrando exclusivamente <strong>{service.name}</strong>. Los cambios de esta sección se aplican únicamente a esta instancia.</p>
           {selectedModule.key === "deliveries" ? (
             <BotDeliveriesPanel botId={botId} />
+          ) : selectedModule.key === "verification" && service.bot?.guildId ? (
+            <BotVerificationPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "studio" && service.bot?.guildId ? (
             <BotStudioPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "automations" ? (

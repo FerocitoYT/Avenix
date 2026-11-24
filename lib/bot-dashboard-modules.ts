@@ -42,6 +42,12 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     href: (botId, guildId) => `/dashboard/bots/editor?botId=${encodeURIComponent(botId)}&section=welcome${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
   },
   {
+    key: "verification", label: "Verificación", shortLabel: "Verificación",
+    description: "Verificación mediante reacción o cuenta, rol automático y acceso opcional a un servidor destino.",
+    icon: "shield", group: "DISCORD", order: 55, requiresGuild: true,
+    href: botId => `/dashboard/bot/${botId}?section=verification`,
+  },
+  {
     key: "studio", label: "Studio de mensajes", shortLabel: "Studio",
     description: "Embeds y mensajes visuales preparados para Discord.",
     icon: "palette", group: "DISCORD", order: 60, requiresGuild: true,
