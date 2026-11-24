@@ -1,0 +1,3 @@
+CREATE TABLE "VerificationCaptchaSession" ("id" TEXT NOT NULL,"token" TEXT NOT NULL,"guildId" TEXT NOT NULL,"discordUserId" TEXT NOT NULL,"discordUsername" TEXT,"discordAvatar" TEXT,"question" TEXT NOT NULL,"answerHash" TEXT NOT NULL,"expiresAt" TIMESTAMP(3) NOT NULL,"completedAt" TIMESTAMP(3),"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "VerificationCaptchaSession_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "VerificationCaptchaSession_token_key" ON "VerificationCaptchaSession"("token");
+CREATE INDEX "VerificationCaptchaSession_guildId_expiresAt_idx" ON "VerificationCaptchaSession"("guildId","expiresAt");

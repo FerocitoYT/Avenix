@@ -937,6 +937,22 @@ model VerificationRecord {
   @@index([guildId, verifiedAt])
 }
 
+model VerificationCaptchaSession {
+  id              String   @id @default(cuid())
+  token           String   @unique
+  guildId         String
+  discordUserId   String
+  discordUsername String?
+  discordAvatar   String?
+  question        String
+  answerHash      String
+  expiresAt       DateTime
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([guildId, expiresAt])
+}
+
 model MemberRestoreJob {
   id             String   @id @default(cuid())
   botInstanceId  String
