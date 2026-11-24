@@ -67,8 +67,7 @@ export default function BotInstanceDashboardPage() {
       } finally { if (active) setLoading(false); }
     };
     void load();
-    const interval = setInterval(() => void load(), 15_000);
-    return () => { active = false; clearInterval(interval); };
+    return () => { active = false; };
   }, [botId]);
 
   const selectedModule = modules.find(module => module.key === requestedSection) || modules[0];
