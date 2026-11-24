@@ -1,3 +1,5 @@
+"use client";
+import {useLanguage,LanguageSelector} from "@/components/language-provider";
 import {CookieSettingsLink} from "@/components/cookie-notice";
 import React from "react";
 import Link from "next/link";
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 
 export function Footer() {
+ const {t}=useLanguage();
   return (
     <footer className="relative bg-[#080d17] border-t border-slate-800/80 text-slate-400 text-sm overflow-hidden">
       {/* Background glow decoration */}
@@ -38,15 +41,15 @@ export function Footer() {
             <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                <span>Cumplimiento RGPD</span>
+                <span>{t("Cumplimiento RGPD","GDPR compliance")}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800">
                 <Lock className="w-3.5 h-3.5 text-blue-400" />
-                <span>Pagos Seguros Stripe</span>
+                <span>{t("Pagos Seguros Stripe","Secure Stripe payments")}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800">
                 <Server className="w-3.5 h-3.5 text-blue-400" />
-                <span>Nodos en la UE</span>
+                <span>{t("Servicios online","Online services")}</span>
               </span>
             </div>
           </div>
@@ -54,7 +57,7 @@ export function Footer() {
           {/* Servicios */}
           <div className="space-y-3">
             <h4 className="text-white font-semibold text-sm tracking-wider uppercase font-display">
-              Servicios
+              {t("Servicios","Services")}
             </h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -63,7 +66,7 @@ export function Footer() {
                   className="hover:text-blue-400 transition-colors flex items-center gap-1.5"
                 >
                   <Bot className="w-3.5 h-3.5 text-blue-500/70" />
-                  Bots de Discord
+                  {t("Bots de Discord","Discord bots")}
                 </Link>
               </li>
               <li>
@@ -72,7 +75,7 @@ export function Footer() {
                   className="hover:text-blue-400 transition-colors flex items-center gap-1.5"
                 >
                   <Globe className="w-3.5 h-3.5 text-blue-500/70" />
-                  Desarrollo Web & Apps
+                  {t("Desarrollo Web & Apps","Web & app development")}
                 </Link>
               </li>
               <li>
@@ -90,7 +93,7 @@ export function Footer() {
                   className="hover:text-blue-400 transition-colors flex items-center gap-1.5"
                 >
                   <Cpu className="w-3.5 h-3.5 text-blue-500/70" />
-                  Automatizaciones & APIs
+                  {t("Automatizaciones & APIs","Automation & APIs")}
                 </Link>
               </li>
               <li>
@@ -98,7 +101,7 @@ export function Footer() {
                   href="/precios"
                   className="hover:text-blue-400 transition-colors flex items-center gap-1.5 text-blue-400 font-medium"
                 >
-                  <span>Planes & Tarifas</span>
+                  <span>{t("Planes & Tarifas","Plans & pricing")}</span>
                 </Link>
               </li>
             </ul>
@@ -107,7 +110,7 @@ export function Footer() {
           {/* Plataforma */}
           <div className="space-y-3">
             <h4 className="text-white font-semibold text-sm tracking-wider uppercase font-display">
-              Plataforma
+              {t("Plataforma","Platform")}
             </h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -123,7 +126,7 @@ export function Footer() {
                   href="/presupuesto"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Solicitar Presupuesto
+                  {t("Solicitar Presupuesto","Request a quote")}
                 </Link>
               </li>
               <li>
@@ -131,7 +134,7 @@ export function Footer() {
                   href="/proyectos"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Portfolio de Proyectos
+                  {t("Portfolio de Proyectos","Project portfolio")}
                 </Link>
               </li>
               <li>
@@ -139,24 +142,17 @@ export function Footer() {
                   href="/contacto"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Contacto & Soporte
+                  {t("Contacto & Soporte","Contact & support")}
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/auth/setup-admin"
-                  className="hover:text-slate-500 transition-colors text-xs text-slate-500"
-                >
-                  Inicialización Admin
-                </Link>
-              </li>
+              
             </ul>
           </div>
 
           {/* Legal & Empresa */}
           <div className="space-y-3">
             <h4 className="text-white font-semibold text-sm tracking-wider uppercase font-display">
-              Legal & Términos
+              {t("Legal & Términos","Legal & terms")}
             </h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -164,7 +160,7 @@ export function Footer() {
                   href="/legal/aviso-legal"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Aviso Legal
+                  {t("Aviso Legal","Legal notice")}
                 </Link>
               </li>
               <li>
@@ -172,7 +168,7 @@ export function Footer() {
                   href="/legal/privacidad"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Política de Privacidad
+                  {t("Política de Privacidad","Privacy policy")}
                 </Link>
               </li>
               <li>
@@ -180,7 +176,7 @@ export function Footer() {
                   href="/legal/cookies"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Política de Cookies
+                  {t("Política de Cookies","Cookie policy")}
                 </Link>
               </li>
               <li>
@@ -188,13 +184,13 @@ export function Footer() {
                   href="/legal/terminos"
                   className="hover:text-blue-400 transition-colors"
                 >
-                  Términos de Servicio
+                  {t("Términos de Servicio","Terms of service")}
                 </Link>
               </li>
-              <li><Link href="/changelogs" className="hover:text-blue-400 transition-colors">Novedades / Changelogs</Link></li>
+              <li><Link href="/changelogs" className="hover:text-blue-400 transition-colors">{t("Novedades / Changelogs","Release notes")}</Link></li>
               <li><CookieSettingsLink /></li>
               <li className="pt-2 text-xs text-slate-500">
-                <span className="block text-slate-400 font-medium">Contacto directo:</span>
+                <span className="block text-slate-400 font-medium">{t("Contacto directo:","Direct contact:")}</span>
                 <a
                   href="mailto:contacto@avenix.dev"
                   className="text-blue-400 hover:underline flex items-center gap-1 mt-1"
@@ -214,9 +210,9 @@ export function Footer() {
             Hecho con estándares de producción e ingeniería de software moderna.
           </p>
           <div className="flex items-center gap-4 text-slate-400">
-            <span>Precios con 21% IVA incluido</span>
+            <span>{t("Precios con 21% IVA incluido","Prices include 21% VAT")}</span>
             <span>•</span>
-            <span>Madrid & Frankfurt Data Centers</span>
+            <span>Axyon</span>
           </div>
         </div>
       </div>
