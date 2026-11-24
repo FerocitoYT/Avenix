@@ -2,9 +2,9 @@
 
 ## WooCommerce (WordPress)
 
-1. Abre `/dashboard/bots/integraciones` y selecciona un bot con suscripción activa.
+1. Abre `/dashboard/bots/integraciones` y selecciona un bot con suscripción activa. Puedes registrar hasta 10 tiendas WooCommerce independientes por bot.
 2. Introduce nombre de tienda y la URL de webhook del canal Discord.
-3. Elige qué eventos de pedidos quieres recibir y guarda.
+3. Elige qué eventos de pedidos quieres recibir, personaliza el título y define un importe mínimo opcional; después guarda.
 4. **Copia el secreto de firma antes de salir**: no vuelve a mostrarse.
 5. En WordPress → WooCommerce → Ajustes → Avanzado → Webhooks, crea un webhook activo para cada evento:
    - `order.created` (pedido creado)
@@ -12,8 +12,9 @@
    - `order.deleted` (pedido eliminado)
 6. Usa la URL de entrega generada y el secreto de firma en todos los webhooks de esa tienda.
 7. Realiza un pedido de prueba. WooCommerce firmará el cuerpo con HMAC-SHA256 en Base64 y enviará la cabecera `X-WC-Webhook-Signature`.
+8. Revisa `/dashboard/bots/integraciones/historial` para ver la cola de entregas y los errores. Puedes reintentar manualmente las que alcancen el estado `FAILED`.
 
-Los avisos incluyen número de pedido, estado e importe, sin datos personales del comprador. El receptor verifica la firma, el estado de la suscripción y el identificador de entrega. Si Discord falla, responde 503 para permitir reintentos.
+Los avisos incluyen número de pedido, estado e importe, sin datos personales del comprador. El receptor verifica firma y suscripción, guarda el evento en Neon y devuelve HTTP 202. El worker de Axyon-Bot envía la notificación y reintenta errores con backoff exponencial (máximo 8 intentos). Las entregas son al menos una vez y pueden repetirse si Discord acepta el mensaje pero el proceso termina antes de marcarlo como entregado.
 
 ## API personalizada
 
@@ -47,8 +48,8 @@ if (!response.ok) throw new Error(`Axyon respondió ${response.status}`);
 
 ## Limitaciones antes de producción masiva
 
-- Esta versión es un **primer conector**. Aún faltan la cola de entregas durable, un sistema de reintentos y límites por cliente, métricas, múltiples tiendas y destinos por bot, y acciones avanzadas sobre roles de Discord.
-- Los eventos se entregan mediante webhooks de Discord, no a través del gateway del bot. Por tanto, no requieren reconectar el cliente Discord.
-- La configuración se almacena en `Setting` como paso inicial; para un producto multitienda deben crearse modelos dedicados e índices por integración, evento y tenant.
-- El secreto se rota al guardar nuevamente. Actualízalo en el emisor.
+- Esta versión es un **conector inicial con cola durable**, reintentos y hasta 10 tiendas por bot. Aún faltan límites de volumen por suscripción, métricas avanzadas, destinos múltiples por tienda, configuración completa de condiciones y acciones sobre roles de Discord.
+- Los eventos se entregan mediante webhooks de Discord, no a través del gateway del bot. Cambiar reglas de tiendas no requiere reconectar el cliente Discord; desplegar código nuevo en Discloud sí puede reiniciar el proceso.
+- La configuración de tiendas continúa en `Setting` como fase de compatibilidad. La cola tiene su propio modelo `IntegrationDelivery` e índices; sería recomendable crear modelos dedicados para cada tienda, reglas y destinos antes de escalar a miles de tiendas.
+- Editar reglas **no rota** el secreto; puedes optar por regenerarlo explícitamente y tendrás que actualizarlo en WooCommerce.
 - No publiques ni envíes los secretos o las URL de webhook a terceros.
