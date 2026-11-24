@@ -86,6 +86,22 @@ export default function IntegrationsPage() {
     finally { setSaving(false); }
   }
 
+  async function sendTest() {
+    if (!botId || !selectedId) return;
+    setSaving(true); setError(""); setMessage("");
+    try {
+      const response = await fetch(`/api/bots/${botId}/integrations/woocommerce/test`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ integrationId: selectedId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudo enviar la prueba");
+      setMessage(result.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error enviando prueba");
+    } finally { setSaving(false); }
+  }
+
   async function remove() {
     if (!botId || !selectedId || !confirm("¿Eliminar esta integración? Los webhooks dejarán de funcionar. Esta acción no se puede deshacer.")) return;
     setSaving(true); setError("");
@@ -141,6 +157,7 @@ export default function IntegrationsPage() {
       {selected && <label className="flex gap-2 items-center text-sm text-amber-300"><input type="checkbox" checked={rotateSecret} onChange={e => setRotateSecret(e.target.checked)}/> Regenerar secreto de WooCommerce (desconectará los webhooks hasta actualizarlo)</label>}
       <div className="flex flex-wrap gap-3">
         <button disabled={saving || !botId || !storeName.trim() || (!selected && !destination)} onClick={() => void save()} className="rounded-lg bg-indigo-600 px-5 py-3 font-semibold disabled:opacity-50">{saving ? "Guardando…" : selected ? "Guardar cambios" : "Crear tienda"}</button>
+        {selected && <button disabled={saving} onClick={() => void sendTest()} className="rounded-lg border border-indigo-700 text-indigo-300 px-5 py-3">Enviar aviso de prueba</button>}
         {selected && <button disabled={saving} onClick={() => void remove()} className="rounded-lg border border-red-700 text-red-300 px-5 py-3">Eliminar tienda</button>}
       </div>
       {error && <p role="alert" className="text-red-400">{error}</p>}
