@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import { authorizeGuild } from "@/lib/bot-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -12,7 +13,7 @@ export async function GET(_req:Request,{params}:Context){
  const [form,records]=await Promise.all([prisma.setting.findUnique({where:{key:"recruitment:config:"+params.id}}),prisma.setting.findMany({where:{key:{startsWith:"recruitment:record:"+params.id+":"}},orderBy:{updatedAt:"desc"},take:100})]);
  return NextResponse.json({config:form?formSchema.parse(JSON.parse(form.value)):defaults,records:records.map(r=>({id:r.key.split(":").pop(),...JSON.parse(r.value)}))});
 }
-export async function POST(req:Request,{params}:Context){
+async function handlePOST(req:Request,{params}:Context){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const parsed=formSchema.safeParse(await req.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Formulario inválido: entre 1 y 5 preguntas de hasta 45 caracteres."},{status:400});
  if(parsed.data.enabled&&!parsed.data.channelId)return NextResponse.json({error:"Indica el canal de publicación"},{status:400});
@@ -20,7 +21,7 @@ export async function POST(req:Request,{params}:Context){
  await prisma.setting.upsert({where:{key},create:{key,value,category:"RECRUITMENT",isPublic:false},update:{value}});
  return NextResponse.json({success:true});
 }
-export async function PUT(req:Request,{params}:Context){
+async function handlePUT(req:Request,{params}:Context){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const parsed=z.discriminatedUnion("action",[z.object({action:z.literal("PUBLISH")}),z.object({action:z.literal("REVIEW"),id:snowflake,status:z.enum(["ACCEPTED","REJECTED"]),note:z.string().max(1000)})]).safeParse(await req.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Acción inválida"},{status:400});
@@ -39,3 +40,6 @@ export async function PUT(req:Request,{params}:Context){
  }
  return NextResponse.json({success:true},{status:202});
 }
+
+export const POST=withBotChange("recruitment",handlePOST);
+export const PUT=withBotChange("recruitment",handlePUT);
