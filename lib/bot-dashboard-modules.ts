@@ -27,7 +27,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     key: "security", label: "Seguridad y moderación", shortLabel: "Seguridad",
     description: "Antispam, antiraid, simulación y registros de moderación.",
     icon: "shield", group: "DISCORD", order: 30, requiresGuild: true,
-    href: (botId, guildId) => `/dashboard/bots?botId=${encodeURIComponent(botId)}&section=security${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
+    href: (botId, guildId) => `/dashboard/bots/editor?botId=${encodeURIComponent(botId)}&section=security${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
   },
   {
     key: "tickets", label: "Tickets", shortLabel: "Tickets",
@@ -39,13 +39,13 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     key: "welcome", label: "Bienvenidas y autoroles", shortLabel: "Bienvenidas",
     description: "Mensajes de entrada y salida, mensajes privados y asignación automática de roles.",
     icon: "user-check", group: "DISCORD", order: 50, requiresGuild: true,
-    href: (botId, guildId) => `/dashboard/bots?botId=${encodeURIComponent(botId)}&section=welcome${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
+    href: (botId, guildId) => `/dashboard/bots/editor?botId=${encodeURIComponent(botId)}&section=welcome${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
   },
   {
     key: "studio", label: "Studio de mensajes", shortLabel: "Studio",
     description: "Embeds y mensajes visuales preparados para Discord.",
     icon: "palette", group: "DISCORD", order: 60, requiresGuild: true,
-    href: (botId, guildId) => `/dashboard/bots?botId=${encodeURIComponent(botId)}&section=studio${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
+    href: (botId, guildId) => `/dashboard/bots/editor?botId=${encodeURIComponent(botId)}&section=studio${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
   },
   {
     key: "automations", label: "Automatizaciones", shortLabel: "Automatizaciones",
