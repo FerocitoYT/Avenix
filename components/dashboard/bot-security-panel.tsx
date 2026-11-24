@@ -12,9 +12,18 @@ type Config = {
 };
 const defaults:Config={antiSpamEnabled:true,spamThreshold:6,spamTimeWindowSeconds:5,repeatThreshold:4,automodAction:"TIMEOUT",automodTimeoutSeconds:300,simulationMode:false,antiRaidEnabled:false,raidThreshold:10,raidWindowSeconds:10,raidAction:"TIMEOUT",modLogChannelId:"",blockInviteLinks:true,blockAllLinks:false,filterRepeatedText:true,antiMassMentionCount:5,minAccountAgeDays:3,bannedWords:[],exemptRoleIds:[],exemptChannelIds:[]};
 
+const protections = [["antiNuke","Anti-Nuke"],["antiBot","Anti-Bot"],["antiWebhook","Anti-Webhook"],["antiPermissions","Anti-Permisos"]] as const;
+type Rule={enabled:boolean;threshold:number;windowSeconds:number;action:"WARN"|"KICK"|"REMOVE_ROLES"};
+type Advanced={simulationMode:boolean;trustedUsers:string[];trustedRoles:string[]}&Record<typeof protections[number][0],Rule>;
+const defaultRule:Rule={enabled:false,threshold:3,windowSeconds:30,action:"WARN"};
+const advancedDefaults:Advanced={simulationMode:true,trustedUsers:[],trustedRoles:[],antiNuke:defaultRule,antiBot:defaultRule,antiWebhook:defaultRule,antiPermissions:defaultRule};
 const ids=(value:string)=>value.split(/[\s,]+/).map(x=>x.trim()).filter(Boolean);
 export function BotSecurityPanel({guildId}:{guildId:string}){
   const [config,setConfig]=useState<Config>(defaults);
+  const [advanced,setAdvanced]=useState<Advanced>(advancedDefaults);
+  const [trustedUsers,setTrustedUsers]=useState("");
+  const [trustedRoles,setTrustedRoles]=useState("");
+  const [loaded,setLoaded]=useState(false);
   const [cases,setCases]=useState<any[]>([]);
   const [banned,setBanned]=useState("");
   const [roles,setRoles]=useState("");
@@ -22,17 +31,17 @@ export function BotSecurityPanel({guildId}:{guildId:string}){
   const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");const [message,setMessage]=useState("");
 
-  useEffect(()=>{let alive=true;(async()=>{try{
+  useEffect(()=>{let alive=true;setLoading(true);setLoaded(false);(async()=>{try{
     const r=await fetch(`/api/bot/guilds/${guildId}/security`,{cache:"no-store"});const d=await r.json();
     if(!r.ok)throw new Error(d.error||"No se pudo cargar Seguridad");
     if(!alive)return;const x=d.config||{};
-    setConfig({...defaults,...x,raidThreshold:x.antiraidJoinThreshold??x.raidThreshold??10,modLogChannelId:x.logChannelId||""});
+    setConfig({...defaults,...x,antiSpamEnabled:x.antispamEnabled??true,antiRaidEnabled:x.antiraidEnabled??false,raidThreshold:x.antiraidJoinThreshold??x.raidThreshold??10,modLogChannelId:x.logChannelId||""});
     setBanned((x.bannedWords||[]).join(", "));setRoles((x.exemptRoleIds||[]).join(", "));setChannels((x.exemptChannelIds||[]).join(", "));
-    setCases(d.recentCases||[]);
+    setCases(d.recentCases||[]);const a=d.advanced||advancedDefaults;setAdvanced(a);setTrustedUsers(a.trustedUsers.join(', '));setTrustedRoles(a.trustedRoles.join(', '));setLoaded(true);
   }catch(e){if(alive)setError(e instanceof Error?e.message:"Error cargando Seguridad")}finally{if(alive)setLoading(false)}})();return()=>{alive=false}},[guildId]);
 
   const save=async()=>{setSaving(true);setError("");setMessage("");try{
-    const payload={...config,bannedWords:banned.split(",").map(x=>x.trim()).filter(Boolean),exemptRoleIds:ids(roles),exemptChannelIds:ids(channels)};
+    const payload={...config,advanced:{...advanced,trustedUsers:ids(trustedUsers),trustedRoles:ids(trustedRoles)},bannedWords:banned.split(",").map(x=>x.trim()).filter(Boolean),exemptRoleIds:ids(roles),exemptChannelIds:ids(channels)};
     const r=await fetch(`/api/bot/guilds/${guildId}/security`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const d=await r.json();if(!r.ok){const detail=d.fields?Object.values(d.fields as Record<string,string[]>).flat().filter(Boolean).join(". "):"";throw new Error(detail||d.error||"No se pudo guardar")}
     setMessage("Seguridad actualizada. El bot aplicará los cambios sin reiniciar.");
@@ -77,7 +86,18 @@ export function BotSecurityPanel({guildId}:{guildId:string}){
         <label className="block text-xs text-slate-400">Canales exentos (IDs)<textarea rows={2} value={channels} onChange={e=>setChannels(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono"/></label>
       </section>
     </div>
-    <button onClick={()=>void save()} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"><Save className="w-4 h-4"/>{saving?"Guardando…":"Guardar Seguridad"}</button>
+    <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
+      <h3 className="font-bold">Seguridad avanzada</h3>
+      <label className="flex gap-2 text-sm"><input type="checkbox" checked={advanced.simulationMode} onChange={e=>setAdvanced(a=>({...a,simulationMode:e.target.checked}))}/>Modo simulación (sin sanciones)</label>
+      {!advanced.simulationMode&&<p className="text-amber-400 text-sm">Las sanciones seleccionadas se aplicarán realmente. Revisa las excepciones.</p>}
+      <div className="grid lg:grid-cols-2 gap-4">{protections.map(([key,label])=><div key={key} className="rounded-xl border border-slate-700 p-4 space-y-3">
+      <label className="flex justify-between font-semibold">{label}<input type="checkbox" checked={advanced[key].enabled} onChange={e=>setAdvanced(a=>({...a,[key]:{...a[key],enabled:e.target.checked}}))}/></label>
+      <div className="grid grid-cols-2 gap-3">{(["threshold","windowSeconds"] as const).map(field=><label key={field} className="text-xs text-slate-400">{field==="threshold"?"Eventos":"Ventana (segundos)"}<input className="mt-2 w-full rounded-xl bg-slate-950 p-3" type="number" min={field==="threshold"?1:5} max={field==="threshold"?50:300} value={advanced[key][field]} onChange={e=>setAdvanced(a=>({...a,[key]:{...a[key],[field]:+e.target.value}}))}/></label>)}</div>
+      <label className="text-xs text-slate-400">Acción<select className="mt-2 w-full rounded-xl bg-slate-950 p-3" value={advanced[key].action} onChange={e=>setAdvanced(a=>({...a,[key]:{...a[key],action:e.target.value as Rule["action"]}}))}><option value="WARN">Solo aviso</option><option value="KICK">Expulsar</option><option value="REMOVE_ROLES">Retirar roles peligrosos</option></select></label></div>)}</div>
+      <label className="block text-xs text-slate-400">Usuarios de confianza (IDs)<textarea className="mt-2 w-full rounded-xl bg-slate-950 p-3" value={trustedUsers} onChange={e=>setTrustedUsers(e.target.value)}/></label>
+      <label className="block text-xs text-slate-400">Roles de confianza (IDs)<textarea className="mt-2 w-full rounded-xl bg-slate-950 p-3" value={trustedRoles} onChange={e=>setTrustedRoles(e.target.value)}/></label>
+    </section>
+    <button onClick={()=>void save()} disabled={saving||!loaded} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"><Save className="w-4 h-4"/>{saving?"Guardando…":"Guardar Seguridad"}</button>
 
     <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
       <h3 className="font-bold">Expedientes recientes</h3>
