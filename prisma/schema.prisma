@@ -539,6 +539,8 @@ model Guild {
   securityConfig    SecurityConfig?
   securityRules     SecurityRule[]
   welcomeConfig     WelcomeConfig?
+  verificationConfig VerificationConfig?
+  verificationRecords VerificationRecord[]
   autoRoles         AutoRole[]
   roleMenus         RoleMenu[]
   temporaryRoles    TemporaryRole[]
@@ -875,6 +877,41 @@ model WelcomeConfig {
   updatedAt         DateTime @updatedAt
 
   guild             Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+}
+
+model VerificationConfig {
+  id                String   @id @default(cuid())
+  guildId           String   @unique
+  enabled           Boolean  @default(false)
+  mode              String   @default("REACTION")
+  channelId         String?
+  messageId         String?
+  verifiedRoleId    String?
+  reactionEmoji     String?  @default("✅")
+  embedTitle        String   @default("Verificación")
+  embedDescription  String   @default("Reacciona o pulsa el botón para verificar tu cuenta.")
+  buttonLabel       String   @default("Verificar cuenta")
+  targetInviteUrl   String?
+  dmAfterVerify     Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  guild             Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId])
+}
+
+model VerificationRecord {
+  id          String   @id @default(cuid())
+  guildId     String
+  discordUserId String
+  method      String
+  verifiedAt  DateTime @default(now())
+
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, discordUserId])
+  @@index([guildId, verifiedAt])
 }
 
 model AutoRole {
