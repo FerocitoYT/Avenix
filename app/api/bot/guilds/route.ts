@@ -1,3 +1,4 @@
+import {maintenanceState} from "@/lib/maintenance";
 import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const user = await getCurrentUser();
+  if(user&&user.role!=="ADMIN"&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
     if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
     let allowedGuildIds: string[] | undefined;
