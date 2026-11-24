@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Service = { id: string; name: string; subscriptionActive: boolean; bot?: { id: string } | null };
 type Delivery = {
@@ -15,6 +16,8 @@ const statuses: Record<string, string> = {
   DELIVERED: "Entregado", FAILED: "Fallido",
 };
 export default function DeliveriesPage() {
+  const searchParams=useSearchParams();
+  const requestedBotId=searchParams.get("botId")||"";
   const [services, setServices] = useState<Service[]>([]);
   const [botId, setBotId] = useState("");
   const [data, setData] = useState<Response | null>(null);
@@ -42,10 +45,10 @@ export default function DeliveriesPage() {
       .then(d => {
         const list = (d.services || []).filter((s: Service) => s.subscriptionActive && s.bot?.id);
         setServices(list);
-        if (list.length) setBotId(list[0].bot!.id);
+        if (list.length) setBotId(list.some((service:Service)=>service.bot?.id===requestedBotId)?requestedBotId:list[0].bot!.id);
       })
       .catch(() => setError("No se pudieron cargar los bots"));
-  }, []);
+  }, [requestedBotId]);
   useEffect(() => {
     void refresh();
     if (!botId) return;
