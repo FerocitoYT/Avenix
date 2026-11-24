@@ -47,8 +47,9 @@ export async function POST(req: Request) {
         const transactionId =
           (session.payment_intent as string) || session.id;
 
-        // Fulfill using centralized fulfillment engine
-        await fulfillOrder({
+        if(session.payment_status!=="paid")break;
+        if(!orderId&&!orderNumber)throw Error("Checkout sin pedido asociado");
+        const result=await fulfillOrder({
           orderId,
           orderNumber,
           userId,
@@ -59,57 +60,59 @@ export async function POST(req: Request) {
           planName: productName,
           notes: `Stripe Checkout Session completada (${session.id})`,
         });
+        if(session.subscription&&result.service){
+          const stripeSub=await stripe.subscriptions.retrieve(String(session.subscription));
+          await prisma.subscription.updateMany({where:{serviceId:result.service.id,userId},data:{stripeSubscriptionId:stripeSub.id,stripeCustomerId:typeof stripeSub.customer==="string"?stripeSub.customer:stripeSub.customer.id,currentPeriodStart:new Date(stripeSub.current_period_start*1000),currentPeriodEnd:new Date(stripeSub.current_period_end*1000),cancelAtPeriodEnd:stripeSub.cancel_at_period_end}});
+          if(session.invoice){
+            const stripeInvoice=await stripe.invoices.retrieve(String(session.invoice));
+            await prisma.invoice.updateMany({where:{orderId:result.order.id,userId,stripeInvoiceId:null},data:{stripeInvoiceId:stripeInvoice.id,pdfUrl:stripeInvoice.invoice_pdf||null}});
+          }
+        }
         break;
       }
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
-        // Manage recurring renewal payment
-        try {
-          if (invoice.subscription) {
-            const subscription = await prisma.subscription.findFirst({
-              where: { stripeSubscriptionId: invoice.subscription as string },
-            });
-
-            if (subscription) {
-              await queuePaymentLogsForUser({
-                userId:subscription.userId,
-                title:"Renovación pagada",
-                description:`Stripe ha confirmado una renovación de ${((invoice.amount_paid||0)/100).toFixed(2)} €.`,
-                metadata:{stripeInvoiceId:invoice.id,subscriptionId:subscription.id}
-              });
-              // Extend period
-              const newEnd = new Date();
-              if (subscription.interval === "YEAR") {
-                newEnd.setFullYear(newEnd.getFullYear() + 1);
-              } else {
-                newEnd.setMonth(newEnd.getMonth() + 1);
-              }
-
-              await prisma.subscription.update({
-                where: { id: subscription.id },
-                data: {
-                  status: "ACTIVE",
-                  currentPeriodEnd: newEnd,
-                },
-              });
-            }
+        if(!invoice.subscription)break;
+        const sub=await prisma.subscription.findFirst({where:{stripeSubscriptionId:String(invoice.subscription)},include:{service:true}});
+        if(!sub)throw Error("Suscripción aún no vinculada");
+        const remote=await stripe.subscriptions.retrieve(String(invoice.subscription));
+        await prisma.$transaction(async tx=>{
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(8242091)`;
+          const existing=await tx.invoice.findFirst({where:{stripeInvoiceId:invoice.id}});
+          const initial=invoice.billing_reason==="subscription_create"&&sub.service?.orderId?await tx.invoice.findFirst({where:{orderId:sub.service.orderId,userId:sub.userId}}):null;
+          if(initial&&!existing){await tx.invoice.update({where:{id:initial.id},data:{stripeInvoiceId:invoice.id,pdfUrl:invoice.invoice_pdf||null,subscriptionId:sub.id}});}
+          else if(!existing){
+            const total=Number(invoice.total??invoice.amount_paid??0),tax=Number(invoice.tax??0);
+            const prefix="FAC-R-"+new Date(invoice.created*1000).getUTCFullYear()+"-";
+            const rows=await tx.invoice.findMany({where:{invoiceNumber:{startsWith:prefix}},select:{invoiceNumber:true}});
+            const next=1+rows.reduce((max,r)=>Math.max(max,Number(r.invoiceNumber.slice(prefix.length))||0),0);
+            await tx.invoice.create({data:{invoiceNumber:prefix+String(next).padStart(6,"0"),userId:sub.userId,subscriptionId:sub.id,amountCents:total-tax,vatAmountCents:tax,vatRatePercent:total>tax?tax/(total-tax)*100:0,totalAmountCents:total,currency:String(invoice.currency||"eur").toUpperCase(),status:"PAID",paidAt:new Date((invoice.status_transitions?.paid_at||invoice.created)*1000),dueDate:new Date((invoice.due_date||invoice.created)*1000),stripeInvoiceId:invoice.id,pdfUrl:invoice.invoice_pdf||null}});
+            await tx.notification.create({data:{userId:sub.userId,title:"Renovación pagada",message:"Stripe ha confirmado el pago de tu renovación. Consulta tu factura.",type:"INVOICE",link:"/dashboard/facturacion"}});
           }
-
-          await prisma.auditLog.create({
-            data: {
-              action: "STRIPE_INVOICE_PAYMENT_SUCCEEDED",
-              entityType: "INVOICE",
-              detailsJson: {
-                stripeInvoiceId: invoice.id,
-                amountPaid: invoice.amount_paid,
-                subscription: invoice.subscription,
-              },
-            },
-          });
-        } catch (subErr) {
-          console.error("Error updating subscription period from invoice:", subErr);
-        }
+          if(remote.status==="active"||remote.status==="trialing"){
+            const end=new Date(remote.current_period_end*1000);
+            await tx.subscription.update({where:{id:sub.id},data:{status:remote.status==="trialing"?"TRIALING":"ACTIVE",currentPeriodStart:new Date(remote.current_period_start*1000),currentPeriodEnd:end,cancelAtPeriodEnd:remote.cancel_at_period_end}});
+            if(sub.serviceId)await tx.service.update({where:{id:sub.serviceId},data:{renewalDate:end}});
+          }
+        });
+        break;
+      }
+      case "invoice.payment_failed":{
+        const invoice=event.data.object;
+        if(!invoice.subscription)break;
+        const sub=await prisma.subscription.findFirst({where:{stripeSubscriptionId:String(invoice.subscription)}});
+        if(!sub)throw Error("Suscripción aún no vinculada");
+        const remote=await stripe.subscriptions.retrieve(String(invoice.subscription));
+        if(remote.status!=="past_due"&&remote.status!=="unpaid")break;
+        await prisma.$transaction(async tx=>{
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(8242091)`;
+          const marker="stripe:event:"+event.id;
+          if(await tx.setting.findUnique({where:{key:marker}}))return;
+          await tx.subscription.update({where:{id:sub.id},data:{status:"PAST_DUE"}});
+          await tx.notification.create({data:{userId:sub.userId,title:"Pago de renovación fallido",message:"No se ha podido procesar tu renovación. Actualiza el método de pago para recuperar el acceso.",type:"WARNING",link:"/dashboard/facturacion"}});
+          await tx.setting.create({data:{key:marker,value:"processed",category:"PAYMENTS",isPublic:false}});
+        });
         break;
       }
 
