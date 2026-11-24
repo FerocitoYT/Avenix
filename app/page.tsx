@@ -202,6 +202,12 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section aria-label="Información de facturación" className="mx-auto w-full max-w-5xl px-4 pb-8">
+        <div className="rounded-2xl border border-slate-700 bg-[#111827] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex gap-3 items-start"><DollarSign className="w-5 h-5 text-blue-400 shrink-0 mt-1"/><div><h2 className="font-semibold text-white">Información de facturación y suscripciones</h2><p className="text-sm text-slate-400 mt-1">Consulta el historial de facturas disponibles y gestiona tus pagos y renovaciones desde tu área de cliente. Los precios y los impuestos aplicables se muestran antes de contratar.</p><Link href="/legal/terminos" className="text-xs text-blue-400 underline">Condiciones de contratación</Link></div></div>
+          <Link href="/dashboard/facturacion" className="shrink-0 text-center rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white">Ver facturación</Link>
+        </div>
+      </section>
       {/* SECCIÓN DE PRECIOS Y TARIFAS ESPECÍFICA */}
       <section id="tarifas" className="py-24 bg-[#0d1627] border-y border-slate-800/80 relative">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
