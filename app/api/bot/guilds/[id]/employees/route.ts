@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import {authorizeGuild} from "@/lib/bot-access";
 import {prisma} from "@/lib/prisma";
 import {NextResponse} from "next/server";
@@ -18,7 +19,7 @@ const command=z.discriminatedUnion("action",[
  z.object({action:z.literal("UPSERT"),userId:id,name:z.string().trim().min(1).max(100),position:z.string().trim().min(1).max(100),status:z.enum(["ACTIVE","INACTIVE"]),note:z.string().max(1000)}),
  z.object({action:z.literal("ACTIVITY"),userId:id,description:z.string().trim().min(1).max(1000),minutes:z.number().int().min(1).max(1440)})
 ]);
-export async function POST(req:Request,{params}:C){
+async function handlePOST(req:Request,{params}:C){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const parsed=command.safeParse(await req.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Datos inválidos"},{status:400});
  const d=parsed.data;const guild=params.id;const cfgKey="employees:config:"+guild;
@@ -38,3 +39,5 @@ export async function POST(req:Request,{params}:C){
  }).catch(e=>{throw e});
  return NextResponse.json({success:true});
 }
+
+export const POST=withBotChange("employees",handlePOST);
