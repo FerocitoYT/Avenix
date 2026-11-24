@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { OFFICIAL_CATALOG } from "@/lib/catalog";
 import { stripe } from "@/lib/stripe";
+import {paypalSettings} from "@/lib/paypal-settings";
+import {randomUUID} from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -86,14 +88,17 @@ export async function POST(req: Request) {
     const baseAmountCents = Math.round(totalAmountCents / (1 + vatRate / 100));
     const vatAmountCents = totalAmountCents - baseAmountCents;
 
+    const paypal=validated.paymentMethod==="PAYPAL"?await paypalSettings():null;
+    if(paypal&&!paypal.enabled)return NextResponse.json({error:"PayPal no está disponible."},{status:503});
+    if(paypal&&!["price-bot-monthly","price-bot-annual"].includes(selectedPrice.id))return NextResponse.json({error:"Plan no disponible mediante PayPal."},{status:400});
     const year = new Date().getFullYear();
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const randomSuffix = randomUUID().replace(/-/g,"").slice(0,16);
     const orderNumber = `AVX-${year}-${randomSuffix}`;
     const invoiceNumber = `FAC-${year}-${randomSuffix}`;
 
     // 3. Create Pending Order in Neon Database
     // Note: The order stays PENDING and will NOT be activated until Stripe Webhook or PayPal IPN confirms payment!
-    const order = await prisma.order.create({
+    const order = await prisma.$transaction(async tx=>{const created=await tx.order.create({
       data: {
         orderNumber,
         userId: currentUser.id,
@@ -104,8 +109,10 @@ export async function POST(req: Request) {
       },
     });
 
+    if(paypal)await tx.setting.create({data:{key:"paypal:order:"+created.id,value:JSON.stringify({receiver:paypal.email,planId:selectedPrice.id,amount:totalAmountCents,currency:"EUR"}),category:"PAYMENTS",isPublic:false}});
+    return created;});
     // 4. Create Initial Invoice (status: ISSUED / Unpaid)
-    await prisma.invoice.create({
+    if(!paypal)await prisma.invoice.create({
       data: {
         invoiceNumber,
         userId: currentUser.id,
@@ -178,19 +185,8 @@ export async function POST(req: Request) {
     }
 
     if (validated.paymentMethod === "PAYPAL") {
-      const isSandbox =
-        process.env.PAYPAL_ENV === "sandbox" ||
-        process.env.NODE_ENV !== "production";
-
-      const paypalBase = isSandbox
-        ? "https://www.sandbox.paypal.com/cgi-bin/webscr"
-        : "https://www.paypal.com/cgi-bin/webscr";
-
-      const receiverEmail =
-        process.env.PAYPAL_RECEIVER_EMAIL ||
-        process.env.PAYPAL_EMAIL ||
-        "pagos@avenix.dev";
-
+      const paypalBase = "https://www.paypal.com/cgi-bin/webscr";
+      const receiverEmail = paypal!.email;
       const paypalParams = new URLSearchParams({
         cmd: "_xclick",
         business: receiverEmail,
@@ -204,10 +200,10 @@ export async function POST(req: Request) {
           userId: currentUser.id,
           orderNumber,
         }),
-        notify_url: `${baseUrl}/api/webhooks/paypal`,
+        notify_url: "https://www.axyon.es/api/webhooks/paypal",
         return: `${baseUrl}/checkout/success?order=${orderNumber}&gateway=paypal`,
         cancel_return: `${baseUrl}/checkout?plan=${validated.planId}&cancelled=true`,
-        rm: "2",
+        rm: "1",
         charset: "utf-8",
       });
 
