@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import {authorizeGuild} from "@/lib/bot-access";
 import {prisma} from "@/lib/prisma";
 import {NextResponse} from "next/server";
@@ -12,7 +13,7 @@ export async function GET(_r:Request,{params}:C){
  const records=await prisma.setting.findMany({where:{category:"SCHEDULED_MESSAGE",key:{startsWith:prefix(params.id)}},orderBy:{updatedAt:"desc"},take:100});
  return NextResponse.json({messages:records.map(r=>JSON.parse(r.value))});
 }
-export async function PUT(r:Request,{params}:C){
+async function handlePUT(r:Request,{params}:C){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const parsed=schema.safeParse(await r.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Datos del mensaje inválidos"},{status:400});
  const d=parsed.data;
@@ -28,7 +29,7 @@ export async function PUT(r:Request,{params}:C){
  else await prisma.setting.create({data:{key,value,category:"SCHEDULED_MESSAGE",isPublic:false}});
  return NextResponse.json({success:true,id});
 }
-export async function DELETE(r:Request,{params}:C){
+async function handleDELETE(r:Request,{params}:C){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const id=new URL(r.url).searchParams.get("id");if(!z.string().uuid().safeParse(id).success)return NextResponse.json({error:"ID inválido"},{status:400});
  const key=prefix(params.id)+id;const row=await prisma.setting.findUnique({where:{key}});
@@ -36,3 +37,6 @@ export async function DELETE(r:Request,{params}:C){
  if(JSON.parse(row.value).status==="PROCESSING")return NextResponse.json({error:"Envío en curso"},{status:409});
  const deleted=await prisma.setting.deleteMany({where:{key,value:row.value}});return NextResponse.json(deleted.count?{success:true}:{error:"El mensaje cambió"},{status:deleted.count?200:409});
 }
+
+export const PUT=withBotChange("messages",handlePUT);
+export const DELETE=withBotChange("messages",handleDELETE);
