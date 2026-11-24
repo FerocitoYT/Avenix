@@ -56,6 +56,8 @@ export async function GET(
       );
     }
 
+    const welcomeOptions=await prisma.setting.findUnique({where:{key:"welcome:options:"+guildId}});
+    const welcomePreferences={imageCard:false,includeBots:true,...(welcomeOptions?JSON.parse(welcomeOptions.value):{})};
     // Get recent cases
     const recentModCases = await prisma.modCase.findMany({
       where: { guildId },
@@ -73,7 +75,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      guild,
+      guild: {...guild,welcomeOptions:welcomePreferences},
       recentModCases,
       recentTickets,
     });
