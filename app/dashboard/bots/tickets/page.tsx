@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Panel = { id?: string; channelId:string; title:string; description:string; colorHex:string; imageUrl:string; thumbnailUrl:string; footerText:string; componentType:"BUTTON"|"SELECT"; messageId?:string|null };
 type Category = { id?:string; panelId:string|null; name:string; emoji:string; description:string; discordCategoryId:string; supportRoleIds:string[]; maxOpenPerUser:number; welcomeMessage:string; priority:"LOW"|"MEDIUM"|"HIGH"|"URGENT"; formFields:Array<{id:string;label:string;placeholder:string;required:boolean;style:"SHORT"|"PARAGRAPH"}> };
@@ -10,6 +11,8 @@ const control="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 
 const field="block space-y-2 text-xs font-semibold text-slate-300";
 
 export default function TicketSettings(){
+ const searchParams=useSearchParams();
+ const requestedGuildId=searchParams.get("guildId")||"";
  const [guilds,setGuilds]=useState<Array<{id:string;name:string}>>([]);
  const [guildId,setGuildId]=useState("");
  const [panels,setPanels]=useState<Panel[]>([]);
@@ -23,9 +26,9 @@ export default function TicketSettings(){
  useEffect(()=>{
   void fetch("/api/client/bot-config",{cache:"no-store"}).then(r=>r.json()).then(data=>{
    const all=(data.services||[]).filter((s:any)=>s.subscriptionActive&&s.bot?.guildId).map((s:any)=>({id:s.bot.guildId,name:s.name}));
-   setGuilds(all);if(all.length)setGuildId(all[0].id);
+   setGuilds(all);if(all.length)setGuildId(all.some((g:{id:string})=>g.id===requestedGuildId)?requestedGuildId:all[0].id);
   }).catch(()=>setError("No se han podido cargar tus servidores."));
- },[]);
+ },[requestedGuildId]);
  async function load(){
   if(!guildId)return;
   try {
