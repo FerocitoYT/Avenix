@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import {authorizeGuild} from "@/lib/bot-access";
 import {prisma} from "@/lib/prisma";
 import {NextResponse} from "next/server";
@@ -13,7 +14,7 @@ export async function GET(_r:Request,{params}:C){
  const votes=attendance.map(r=>JSON.parse(r.value));
  return NextResponse.json({events:rows.map(r=>{const e=JSON.parse(r.value);return {...e,attendees:votes.filter(v=>v.eventId===e.id)};}),attendanceLimited:attendance.length===5000});
 }
-export async function PUT(r:Request,{params}:C){
+async function handlePUT(r:Request,{params}:C){
  const a=await authorizeGuild(params.id);if(!a.ok)return NextResponse.json({error:a.error},{status:a.status});
  const p=schema.safeParse(await r.json().catch(()=>null));if(!p.success)return NextResponse.json({error:"Evento inválido"},{status:400});
  const d=p.data;if(d.enabled&&d.startsAt<=Date.now())return NextResponse.json({error:"Selecciona una fecha futura"},{status:400});
@@ -28,3 +29,5 @@ export async function PUT(r:Request,{params}:C){
  else await prisma.setting.create({data:{key,value,category:"GUILD_EVENT",isPublic:false}});
  return NextResponse.json({success:true});
 }
+
+export const PUT=withBotChange("events",handlePUT);
