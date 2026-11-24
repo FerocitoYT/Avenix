@@ -24,11 +24,18 @@ const icons: Record<string, React.ComponentType<{className?:string}>> = {
   activity: Activity,
 };
 
-export function BotManagerShell({ children }: { children: React.ReactNode }) {
+export function BotManagerShell({ children, botIdOverride }: { children: React.ReactNode; botIdOverride?: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const botId = pathname.match(/^\/dashboard\/bot\/([^/]+)/)?.[1] || "";
-  const section = searchParams.get("section") || "overview";
+  const botId = botIdOverride || pathname.match(/^\/dashboard\/bot\/([^/]+)/)?.[1] || searchParams.get("botId") || "";
+  const section =
+    pathname === "/dashboard/bots/configuracion" ? "credentials" :
+    pathname === "/dashboard/bots/tickets" ? "tickets" :
+    pathname === "/dashboard/bots/diagnostico" ? "diagnostics" :
+    pathname === "/dashboard/bots/integraciones/historial" ? "deliveries" :
+    pathname === "/dashboard/bots/integraciones" ? "integrations" :
+    pathname === "/dashboard/bots/editor" ? (searchParams.get("section") || "security") :
+    searchParams.get("section") || "overview";
   const [bot, setBot] = useState<BotInfo|null>(null);
   const [mobileOpen,setMobileOpen] = useState(false);
   const modules = useMemo(()=>orderedBotDashboardModules(),[]);
