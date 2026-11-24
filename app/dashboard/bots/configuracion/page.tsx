@@ -21,8 +21,9 @@ export default function ConfiguracionBot() {
      const res=await fetch("/api/client/bot-config",{cache:"no-store"});
      if(!res.ok) throw new Error("No se pudieron cargar tus servicios");
      const data=await res.json();
-     setServices(data.services||[]);
-     setSelected((prev:string)=>prev||data.services?.[0]?.id||"");
+     const activeServices=(data.services||[]).filter((service:Service)=>service.subscriptionActive);
+     setServices(activeServices);
+     setSelected((prev:string)=>activeServices.some((service:Service)=>service.id===prev)?prev:activeServices?.[0]?.id||"");
    }catch(e){setError(e instanceof Error?e.message:"Error de conexión");}
    finally{setLoading(false);}
  };
@@ -65,7 +66,7 @@ export default function ConfiguracionBot() {
  };
  return <main className="max-w-3xl mx-auto p-5 md:p-10 text-slate-100 space-y-6">
    <div><Link href="/dashboard/bots" className="text-sm text-blue-400">← Volver al panel</Link><h1 className="text-3xl font-bold mt-3">Configurar bot de cliente</h1><p className="text-slate-400 mt-2">Cada bot tiene su propia configuración y utiliza la infraestructura compartida de Axyon.</p></div>
-   {loading?<p>Cargando servicios…</p>:services.length===0?<div className="rounded-xl bg-slate-900 p-6">No tienes servicios de bot asociados a esta cuenta.</div>:<>
+   {loading?<p>Cargando servicios…</p>:services.length===0?<div className="rounded-xl border border-amber-800 bg-amber-950/30 p-6 space-y-2"><h2 className="font-bold text-amber-300">No tienes una suscripción de bot activa</h2><p className="text-sm text-slate-400">Las opciones de administración se bloquean automáticamente cuando termina la suscripción. Al renovar, volverán a estar disponibles.</p></div>:<>
      <label className="block text-sm">Servicio<select className="block mt-2 w-full rounded-lg bg-slate-900 border border-slate-700 p-3" value={selected} onChange={e=>setSelected(e.target.value)}>{services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
      {service&&!service.subscriptionActive?<p className="rounded-xl bg-amber-950 p-4 text-amber-300">La suscripción no está vigente. No puedes modificar el bot.</p>:service&&<form onSubmit={save} className="space-y-5 rounded-2xl bg-slate-900 border border-slate-800 p-5">
        <div className="flex flex-wrap gap-3 text-sm"><span className="text-emerald-400">Suscripción activa</span><span className="text-slate-400">Hasta {service.expiresAt?new Date(service.expiresAt).toLocaleDateString("es-ES"):"—"}</span><span className="text-slate-400">Estado real: {service.bot?.observedStatus==="RUNNING"?"Conectado":service.bot?.observedStatus==="RESTARTING"?"Iniciando":service.bot?.observedStatus==="ERROR"?"Error de conexión":service.bot?.observedStatus==="OFFLINE"?"Sin conexión con Discloud":service.bot?.status==="STOPPED"?"Detenido":"Sin confirmar"}</span></div>
