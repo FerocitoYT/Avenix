@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
-import { deliverOrderEmbed, eventAllowed, reserveDelivery, finishDelivery, type IntegrationConfig } from "@/lib/integrations/discord-events";
+import { eventAllowed, type IntegrationConfig } from "@/lib/integrations/discord-events";
+import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,17 +55,33 @@ export async function POST(request: Request, { params }: { params: { integration
   if (!deliveryId || !/^\d{1,32}$/.test(deliveryId)) return json("Identificador de entrega inválido", 400);
   const config = entry.value as IntegrationConfig;
   if (!eventAllowed(config, topic, order)) return NextResponse.json({ success: true, filtered: true });
-  const dedupeKey = `integration:wc:delivery:${params.integrationId}:${deliveryId}`;
-  const reservation = await reserveDelivery(dedupeKey);
-  if (reservation === "duplicate") return NextResponse.json({ success: true, duplicate: true });
-  if (reservation === "busy") return json("Entrega en curso, reintentar", 503);
+  const eventId = deliveryId;
+  // Accept quickly and persist a minimal non-PII summary. The Discloud worker
+  // sends the message and handles retries independently of Vercel timeouts.
+  const payload = {
+    number: str(order.number ?? order.id, 50),
+    status: str(order.status, 60),
+    total: str(order.total, 30),
+    currency: str(order.currency, 8),
+  };
   try {
-    await deliverOrderEmbed(config, topic, order);
-    await finishDelivery(dedupeKey, true);
-    return NextResponse.json({ success: true });
+    const delivery = await prisma.integrationDelivery.create({
+      data: {
+        botId: bot.id,
+        integrationId: params.integrationId,
+        eventId,
+        provider: "WOOCOMMERCE",
+        eventType: topic,
+        payload,
+      },
+      select: { id: true },
+    });
+    return NextResponse.json({ success: true, queued: true, deliveryId: delivery.id }, { status: 202 });
   } catch (error) {
-    console.error("[WooCommerce] Error entregando aviso", error);
-    await finishDelivery(dedupeKey, false);
-    return json("No se pudo entregar el aviso, reintentar", 503);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
+    console.error("[WooCommerce] Could not queue event:", error);
+    return json("Error guardando el evento; WooCommerce puede reintentarlo", 503);
   }
 }
