@@ -1,4 +1,5 @@
 "use client";
+import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -111,7 +112,7 @@ export default function BotInstanceDashboardPage() {
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">{service.bot&&<RestartBotButton id={service.bot.id} disabled={!service.bot.tokenConfigured||observed==="RESTARTING"} onRequested={()=>setService(prev=>prev?.bot?{...prev,bot:{...prev.bot,status:"RESTARTING",observedStatus:"RESTARTING"}}:prev)}/>}
         <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${connected ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : observed === "ERROR" ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-slate-700 bg-slate-800 text-slate-300"}`}>
           {connected ? "Conectado" : observed === "RESTARTING" ? "Iniciando" : observed === "ERROR" ? "Error" : "Detenido"}
         </span>
