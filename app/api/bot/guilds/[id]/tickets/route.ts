@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import { authorizeGuild } from "@/lib/bot-access";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -78,7 +79,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+async function handlePOST(req: Request, { params }: { params: { id: string } }) {
   const check = await allowed(params.id);
   if (check.error) return check.error;
   const guildId = params.id;
@@ -155,3 +156,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "No se pudieron guardar los cambios" }, { status: 500 });
   }
 }
+
+export const POST=withBotChange("tickets",handlePOST);
