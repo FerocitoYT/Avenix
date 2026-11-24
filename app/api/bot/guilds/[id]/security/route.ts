@@ -38,10 +38,13 @@ const schema = z.object({
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const access = await authorizeGuild(params.id);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
-  const [config, recentCases, advancedSetting] = await Promise.all([
+  const [config, recentCases, advancedSetting, lockdown, lockdownRequest, lockdownResult] = await Promise.all([
     prisma.securityConfig.findUnique({ where: { guildId: params.id } }),
     prisma.modCase.findMany({ where: { guildId: params.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     prisma.setting.findUnique({where:{key:'security:advanced:'+params.id}}),
+    prisma.setting.findUnique({where:{key:'security:lockdown:'+params.id}}),
+    prisma.setting.findUnique({where:{key:'security:lockdown-request:'+params.id}}),
+    prisma.setting.findUnique({where:{key:'security:lockdown-result:'+params.id}}),
   ]);
   return NextResponse.json({
     success: true,
@@ -53,6 +56,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       minAccountAgeDays: 3, bannedWords: [], exemptRoleIds: [], exemptChannelIds: [], logChannelId: null,
     },
     recentCases,
+    emergency:{active:!!lockdown,pending:!!lockdownRequest,result:lockdownResult?JSON.parse(lockdownResult.value):null},
     advanced: advancedSetting ? advancedSchema.parse(JSON.parse(advancedSetting.value)) : advancedDefaults,
   });
 }
