@@ -20,6 +20,12 @@ const advancedDefaults:Advanced={simulationMode:true,trustedUsers:[],trustedRole
 const ids=(value:string)=>value.split(/[\s,]+/).map(x=>x.trim()).filter(Boolean);
 export function BotSecurityPanel({guildId}:{guildId:string}){
   const [config,setConfig]=useState<Config>(defaults);
+  const [emergency,setEmergency]=useState<{active:boolean;pending:boolean;result:{report:string;at:number}|null}>({active:false,pending:false,result:null});
+  const [emergencyBusy,setEmergencyBusy]=useState(false);
+  const [confirmEmergency,setConfirmEmergency]=useState<boolean|null>(null);
+  const refreshEmergency=async()=>{const r=await fetch(`/api/bot/guilds/${guildId}/security`,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudo consultar el bloqueo");setEmergency(d.emergency);};
+  useEffect(()=>{if(!emergency.pending)return;const timer=setInterval(()=>{void refreshEmergency().catch(()=>{});},5000);return()=>clearInterval(timer)},[guildId,emergency.pending]);
+  const requestEmergency=async(activate:boolean)=>{setEmergencyBusy(true);setError("");setConfirmEmergency(null);try{const r=await fetch(`/api/bot/guilds/${guildId}/security`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({activate})});const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudo solicitar el bloqueo");setEmergency(x=>({...x,pending:true,result:null}));}catch(e){setError(e instanceof Error?e.message:"Error solicitando bloqueo")}finally{setEmergencyBusy(false)}};
   const [advanced,setAdvanced]=useState<Advanced>(advancedDefaults);
   const [trustedUsers,setTrustedUsers]=useState("");
   const [trustedRoles,setTrustedRoles]=useState("");
@@ -37,6 +43,7 @@ export function BotSecurityPanel({guildId}:{guildId:string}){
     if(!alive)return;const x=d.config||{};
     setConfig({...defaults,...x,antiSpamEnabled:x.antispamEnabled??true,antiRaidEnabled:x.antiraidEnabled??false,raidThreshold:x.antiraidJoinThreshold??x.raidThreshold??10,modLogChannelId:x.logChannelId||""});
     setBanned((x.bannedWords||[]).join(", "));setRoles((x.exemptRoleIds||[]).join(", "));setChannels((x.exemptChannelIds||[]).join(", "));
+    setEmergency(d.emergency||{active:false,pending:false,result:null});setConfirmEmergency(null);
     setCases(d.recentCases||[]);const a=d.advanced||advancedDefaults;setAdvanced(a);setTrustedUsers(a.trustedUsers.join(', '));setTrustedRoles(a.trustedRoles.join(', '));setLoaded(true);
   }catch(e){if(alive)setError(e instanceof Error?e.message:"Error cargando Seguridad")}finally{if(alive)setLoading(false)}})();return()=>{alive=false}},[guildId]);
 
@@ -86,6 +93,17 @@ export function BotSecurityPanel({guildId}:{guildId:string}){
         <label className="block text-xs text-slate-400">Canales exentos (IDs)<textarea rows={2} value={channels} onChange={e=>setChannels(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono"/></label>
       </section>
     </div>
+    <section className="rounded-2xl border border-red-900/60 bg-[#111827] p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3"><h3 className="font-bold flex items-center gap-2"><Siren className="w-5 h-5 text-red-400"/>Bloqueo de emergencia</h3><span className="text-xs text-slate-300">{emergency.pending?"Solicitud pendiente":emergency.active?"Restauración disponible":"Sin bloqueo registrado"}</span></div>
+      <p className="text-sm text-slate-400">Restringe el envío de mensajes de @everyone en canales de texto y anuncios. Los permisos explícitos de otros roles pueden permitir escribir. Solo el propietario puede ejecutar esta operación.</p>
+      <div className="flex flex-wrap gap-3">
+      <button type="button" disabled={!loaded||emergencyBusy||emergency.pending||emergency.active} onClick={()=>setConfirmEmergency(true)} className="rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold disabled:opacity-40">Activar bloqueo</button>
+      <button type="button" disabled={!loaded||emergencyBusy||emergency.pending||!emergency.active} onClick={()=>setConfirmEmergency(false)} className="rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold disabled:opacity-40">Restaurar permisos</button>
+      <button type="button" onClick={()=>void refreshEmergency().catch(e=>setError(e.message))} className="rounded-xl border border-slate-700 px-4 py-3 text-sm">Actualizar estado</button></div>
+      {confirmEmergency!==null&&<div className="rounded-xl border border-amber-700 p-4 space-y-3"><p className="text-sm">{confirmEmergency?"¿Confirmas el bloqueo de los canales de texto?":"¿Confirmas la restauración de los permisos anteriores?"}</p><div className="flex gap-3"><button type="button" onClick={()=>void requestEmergency(confirmEmergency)} className="rounded-lg bg-blue-600 px-4 py-2">Confirmar</button><button type="button" onClick={()=>setConfirmEmergency(null)} className="rounded-lg border border-slate-600 px-4 py-2">Cancelar</button></div></div>}
+      {emergency.pending&&<p className="text-sm text-amber-400">Esperando respuesta del bot. No cierres ni modifiques los permisos manualmente durante la operación.</p>}
+      {emergency.result&&<p className="text-sm text-slate-300">{emergency.result.report} · {new Date(emergency.result.at).toLocaleString("es-ES")}</p>}
+    </section>
     <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
       <h3 className="font-bold">Seguridad avanzada</h3>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={advanced.simulationMode} onChange={e=>setAdvanced(a=>({...a,simulationMode:e.target.checked}))}/>Modo simulación (sin sanciones)</label>
