@@ -1130,11 +1130,8 @@ enum BotInstanceStatus {
 }
 
 
-/**
- * Durable webhook delivery queue shared by the Control API and the Discloud worker.
- * Payload is a minimal, non-PII summary; never store bearer tokens, billing
- * addresses or full WooCommerce order/customer records here.
- */
+/// Durable webhook delivery queue shared by Control and the Discloud worker.
+/// Payload contains no customer names, emails, billing data or credentials.
 model IntegrationDelivery {
   id            String      @id @default(cuid())
   botId         String
