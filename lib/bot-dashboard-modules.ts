@@ -86,6 +86,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     icon: "history", group: "SYSTEM", order: 95, requiresGuild: true,
     href: botId => `/dashboard/bot/${botId}?section=logs`,
   },
+  {key:"performance",label:"Rendimiento del bot",shortLabel:"Rendimiento",description:"Perfiles de ejecución y recopilación de estadísticas.",icon:"activity",group:"SYSTEM",order:96,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=performance`},
   {
     key: "diagnostics", label: "Diagnóstico", shortLabel: "Diagnóstico",
     description: "Heartbeat, intents, credenciales y estado observado por la infraestructura.",
