@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptSecret } from "@/lib/crypto";
-import { DEFAULT_RULES } from "@/lib/integrations/discord-events";
+import { DEFAULT_RULES, type EventRule } from "@/lib/integrations/discord-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +39,7 @@ type Stored = {
   botId: string;
   storeName: string;
   enabled: boolean;
-  rules?: z.infer<typeof eventRule>[];
+  rules?: EventRule[];
   signingSecretEncrypted: string;
   discordWebhookEncrypted: string;
 };
