@@ -1,5 +1,6 @@
 "use client";
 
+import {useLanguage,LanguageSelector} from "@/components/language-provider";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,6 +28,7 @@ interface NavUser {
 }
 
 export function Navbar() {
+  const {t}=useLanguage();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -60,12 +62,12 @@ export function Navbar() {
   }, [pathname]);
 
   const navLinks = [
-    { label: "Inicio", href: "/" },
-    { label: "Servicios", href: "/servicios" },
-    { label: "Precios", href: "/precios" },
-    { label: "Proyectos", href: "/proyectos" },
-    { label: "Presupuesto", href: "/presupuesto", highlight: true },
-    { label: "Contacto", href: "/contacto" },
+    { label: t("Inicio","Home"), href: "/" },
+    { label: t("Servicios","Services"), href: "/servicios" },
+    { label: t("Precios","Pricing"), href: "/precios" },
+    { label: t("Proyectos","Projects"), href: "/proyectos" },
+    { label: t("Presupuesto","Get a quote"), href: "/presupuesto", highlight: true },
+    { label: t("Contacto","Contact"), href: "/contacto" },
   ];
 
   return (
@@ -78,7 +80,7 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand Logo */}
-        <AvenixLogo />
+        <AvenixLogo /><div className="ml-2"><LanguageSelector/></div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
@@ -134,7 +136,7 @@ export function Navbar() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all"
               >
                 <User className="w-4 h-4 text-blue-400" />
-                <span>Iniciar sesión</span>
+                <span>{t("Iniciar sesión","Sign in")}</span>
               </Link>
 
               <Link
@@ -142,7 +144,7 @@ export function Navbar() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-md shadow-blue-600/25 transition-all hover:scale-[1.02]"
               >
                 <Sparkles className="w-4 h-4 text-blue-200" />
-                <span>Contratar</span>
+                <span>{t("Contratar","Get started")}</span>
               </Link>
             </div>
           )}
@@ -197,7 +199,7 @@ export function Navbar() {
                     className="w-full text-center py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2"
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    Ir a Avenix Control
+                    {t("Ir a Axyon Control","Open Axyon Control")}
                   </Link>
                   {user.role === "ADMIN" && (
                     <Link
@@ -205,7 +207,7 @@ export function Navbar() {
                       className="w-full text-center py-2.5 rounded-xl text-sm font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center gap-2"
                     >
                       <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                      Panel Administrativo
+                      {t("Panel Administrativo","Admin dashboard")}
                     </Link>
                   )}
                 </>
@@ -215,13 +217,13 @@ export function Navbar() {
                     href="/auth/login"
                     className="w-full text-center py-2.5 rounded-xl text-sm font-medium text-slate-300 bg-slate-800/70 border border-slate-700/50 hover:text-white"
                   >
-                    Iniciar sesión
+                    {t("Iniciar sesión","Sign in")}
                   </Link>
                   <Link
                     href="/presupuesto"
                     className="w-full text-center py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 shadow-lg shadow-blue-600/25 hover:bg-blue-500"
                   >
-                    Contratar
+                    {t("Contratar","Get started")}
                   </Link>
                 </div>
               )}
