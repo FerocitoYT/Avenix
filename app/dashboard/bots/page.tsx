@@ -1,4 +1,5 @@
 "use client";
+import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -80,6 +81,7 @@ export default function BotsPage() {
             {service.subscriptionActive && service.bot ? <Link href={`/dashboard/bot/${service.bot.id}`} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-500">Abrir panel <ArrowRight className="w-4 h-4"/></Link>
             : <span className="inline-flex items-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 px-4 py-2.5 text-amber-300"><AlertCircle className="w-4 h-4"/>Administración bloqueada</span>}
           </div>
+          {service.subscriptionActive&&service.bot&&<RestartBotButton id={service.bot.id} disabled={!service.bot.tokenConfigured||observed==="RESTARTING"} onRequested={()=>setServices(prev=>prev.map(s=>s.id===service.id&&s.bot?{...s,bot:{...s.bot,status:"RESTARTING",observedStatus:"RESTARTING"}}:s))}/>}
           {service.subscriptionActive&&service.bot&&<details className="rounded-xl border border-slate-700 p-3" open><summary className="cursor-pointer font-semibold text-sm">Todos los módulos ({modules.length})</summary><div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">{modules.map(m=><Link key={m.key} href={m.href(service.bot!.id,service.bot!.guildId)} className="min-w-0 rounded-lg border border-slate-800 bg-slate-950 p-3 hover:border-blue-500"><span className="block text-sm font-semibold break-words">{m.label}</span><span className="block text-xs text-slate-400 mt-1">{m.requiresGuild&&!service.bot!.guildId?"Requiere vincular servidor":m.description}</span></Link>)}</div></details>}
         </article>;
       })}
