@@ -1,4 +1,6 @@
 "use client";
+import {NotificationCenter} from "@/components/dashboard/notification-center";
+
 
 import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
@@ -152,7 +154,7 @@ function DashboardLayoutInner({
     return <div className="min-h-screen bg-[#0B1220] flex items-center justify-center p-6"><div className="max-w-md w-full rounded-3xl border border-slate-700 bg-[#111827] p-8 text-center space-y-4"><AvenixLogo/><h1 className="text-2xl font-bold text-white">Panel en mantenimiento</h1><p className="text-slate-300">{maintenanceChecked?maintenance?.reason:"Comprobando disponibilidad del servicio…"}</p>{maintenanceChecked&&maintenance?.until?<p className="text-sm text-amber-300">Finalización prevista: {new Date(maintenance.until).toLocaleString("es-ES")}</p>:null}<Link href="/dashboard" className="inline-block rounded-xl bg-blue-600 px-4 py-3 text-white">Volver a mi cuenta</Link></div></div>;
   }
   if (useBotManagerShell) {
-    return <BotManagerShell botIdOverride={editorBotId || undefined}>{children}</BotManagerShell>;
+    return <BotManagerShell botIdOverride={editorBotId || undefined}><NotificationCenter/>{children}</BotManagerShell>;
   }
 
   return (
@@ -319,6 +321,7 @@ function DashboardLayoutInner({
 
       {/* Main Content Viewport */}
       <main className="flex-1 overflow-y-auto min-h-screen">
+        <NotificationCenter/>
         {children}
       </main>
     </div>
