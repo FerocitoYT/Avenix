@@ -1,4 +1,5 @@
 "use client";
+import {useLanguage,LanguageSelector} from "@/components/language-provider";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 export default function RegisterPage() {
+ const {t}=useLanguage();
   const router = useRouter();
   const [form, setForm] = useState({
     name: "",
@@ -41,13 +43,13 @@ export default function RegisterPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Error al crear la cuenta.");
+        throw new Error(data.error || t("Error al crear la cuenta.","Unable to create account."));
       }
 
       router.push("/dashboard");
       router.refresh();
     } catch (err: any) {
-      setError(err.message || "No se pudo registrar la cuenta.");
+      setError(err.message || t("No se pudo registrar la cuenta.","Registration failed."));
     } finally {
       setLoading(false);
     }
@@ -59,12 +61,12 @@ export default function RegisterPage() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <AvenixLogo size="lg" className="justify-center" />
+          <AvenixLogo size="lg" className="justify-center" /><div className="mt-3"><LanguageSelector/></div>
           <h1 className="text-2xl font-bold text-white mt-6 font-display">
-            Crear cuenta de cliente
+            {t("Crear cuenta de cliente","Create a customer account")}
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Accede a tus servicios, facturación y panel de control de bots.
+            {t("Accede a tus servicios, facturación y panel de control de bots.","Access your services, billing and bot dashboard.")}
           </p>
         </div>
 
@@ -79,7 +81,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Nombre y Apellidos *
+                {t("Nombre y Apellidos *","Full name *")}
               </label>
               <div className="relative">
                 <input
@@ -96,7 +98,7 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Correo electrónico *
+                {t("Correo electrónico *","Email address *")}
               </label>
               <div className="relative">
                 <input
@@ -113,7 +115,7 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Contraseña segura (mínimo 8 caracteres) *
+                {t("Contraseña segura (mínimo 8 caracteres) *","Secure password (at least 8 characters) *")}
               </label>
               <div className="relative">
                 <input
@@ -132,7 +134,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Discord Tag (opcional)
+                  {t("Discord Tag (opcional)","Discord tag (optional)")}
                 </label>
                 <input
                   type="text"
@@ -164,7 +166,7 @@ export default function RegisterPage() {
               </Link>{" "}
               y la{" "}
               <Link href="/legal/privacidad" className="text-blue-400 underline">
-                política de privacidad
+                {t("política de privacidad","privacy policy")}
               </Link>
               .
             </p>
@@ -177,11 +179,11 @@ export default function RegisterPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Creando tu cuenta...</span>
+                  <span>{t("Creando tu cuenta...","Creating your account...")}</span>
                 </>
               ) : (
                 <>
-                  <span>Registrar cuenta y continuar</span>
+                  <span>{t("Registrar cuenta y continuar","Create account and continue")}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -190,9 +192,9 @@ export default function RegisterPage() {
         </div>
 
         <div className="mt-6 text-center text-xs text-slate-400">
-          ¿Ya tienes cuenta en Avenix?{" "}
+          {t("¿Ya tienes cuenta en Avenix?","Already have an Axyon account?")}{" "}
           <Link href="/auth/login" className="text-blue-400 hover:underline font-semibold">
-            Iniciar sesión
+            {t("Iniciar sesión","Sign in")}
           </Link>
         </div>
       </div>
