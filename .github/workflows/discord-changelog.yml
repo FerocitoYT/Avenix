@@ -1,0 +1,43 @@
+name: Discord · Cambios de Axyon Control
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  discord-changelog:
+    name: Notificar cambios de la web
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar historial para comparar
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar generador
+        run: node --check .github/scripts/discord-changelog.mjs
+      - name: Comprobar secreto de Discord
+        shell: bash
+        env:
+          DISCORD_CHANGELOG_WEBHOOK: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
+        run: |
+          if [ -z "$DISCORD_CHANGELOG_WEBHOOK" ]; then
+            echo "::error::Falta el secreto DISCORD_CHANGELOG_WEBHOOK en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+      - name: Enviar embed a Discord
+        run: node .github/scripts/discord-changelog.mjs
+        env:
+          DISCORD_CHANGELOG_WEBHOOK: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
