@@ -1,3 +1,4 @@
+import {withBotChange} from "@/lib/bot-change-signal";
 import { authorizeGuild } from "@/lib/bot-access";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -61,7 +62,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+async function handlePOST(req: Request, { params }: { params: { id: string } }) {
   const access = await authorizeGuild(params.id);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -106,7 +107,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 }
 
-export async function PUT(req: Request, {params}: {params:{id:string}}) {
+async function handlePUT(req: Request, {params}: {params:{id:string}}) {
   const access=await authorizeGuild(params.id);
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
   const guild=await prisma.guild.findUnique({where:{id:params.id},select:{ownerId:true}});
@@ -119,3 +120,6 @@ export async function PUT(req: Request, {params}: {params:{id:string}}) {
     return NextResponse.json({success:true,pending:true},{status:202});
   } catch {return NextResponse.json({error:"No se pudo registrar la solicitud o ya existe una pendiente"},{status:409});}
 }
+
+export const POST=withBotChange("security",handlePOST);
+export const PUT=withBotChange("security",handlePUT);
