@@ -49,6 +49,9 @@ function DashboardLayoutInner({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [maintenance,setMaintenance]=useState<{mode:string;until:number;reason:string}|null>(null);
+  const [maintenanceChecked,setMaintenanceChecked]=useState(false);
+  useEffect(()=>{let active=true;let busy=false;const check=async()=>{if(busy)return;busy=true;try{const r=await fetch("/api/maintenance",{cache:"no-store"});if(!r.ok)throw Error("Estado no disponible");const d=await r.json();if(active){setMaintenance(d);setMaintenanceChecked(true)}}catch{if(active)setMaintenanceChecked(false)}finally{busy=false}};void check();const timer=setInterval(()=>void check(),5000);return()=>{active=false;clearInterval(timer)}},[]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<DashboardUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,6 +148,9 @@ function DashboardLayoutInner({
     pathname.startsWith("/dashboard/bot/") ||
     (Boolean(editorBotId) && legacyBotEditorPaths.some(path => pathname === path || pathname.startsWith(path + "/")));
 
+  if(user?.role!=="ADMIN"&&/^\/dashboard\/bots?(?:\/|$)/.test(pathname)&&(!maintenanceChecked||maintenance?.mode!=="OFF")){
+    return <div className="min-h-screen bg-[#0B1220] flex items-center justify-center p-6"><div className="max-w-md w-full rounded-3xl border border-slate-700 bg-[#111827] p-8 text-center space-y-4"><AvenixLogo/><h1 className="text-2xl font-bold text-white">Panel en mantenimiento</h1><p className="text-slate-300">{maintenanceChecked?maintenance?.reason:"Comprobando disponibilidad del servicio…"}</p>{maintenanceChecked&&maintenance?.until?<p className="text-sm text-amber-300">Finalización prevista: {new Date(maintenance.until).toLocaleString("es-ES")}</p>:null}<Link href="/dashboard" className="inline-block rounded-xl bg-blue-600 px-4 py-3 text-white">Volver a mi cuenta</Link></div></div>;
+  }
   if (useBotManagerShell) {
     return <BotManagerShell botIdOverride={editorBotId || undefined}>{children}</BotManagerShell>;
   }
