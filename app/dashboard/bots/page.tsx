@@ -49,6 +49,7 @@ export default function BotControlDashboardPage() {
   const [activeTab, setActiveTab] = useState<"security" | "tickets" | "welcome" | "studio" | "custom_bot">("security");
   const [loading, setLoading] = useState<boolean>(true);
   const [hostStatus, setHostStatus] = useState<{status:string;lastPingAt:string|null}|null>(null);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
@@ -123,8 +124,12 @@ export default function BotControlDashboardPage() {
         const response = await fetch("/api/client/bot-config", { cache: "no-store" });
         if (!response.ok) throw new Error("Status unavailable");
         const data = await response.json();
-        const bot = selectedGuildId ? data.services?.find((s: any) => s.bot?.guildId === selectedGuildId)?.bot : data.services?.find((s: any) => s.bot)?.bot;
-        if (active) setHostStatus(bot ? { status: bot.observedStatus || "OFFLINE", lastPingAt: bot.lastPingAt } : null);
+        const activeServices = (data.services || []).filter((s: any) => s.subscriptionActive);
+        const bot = selectedGuildId ? activeServices.find((s: any) => s.bot?.guildId === selectedGuildId)?.bot : activeServices.find((s: any) => s.bot)?.bot;
+        if (active) {
+          setHasActiveSubscription(activeServices.length > 0);
+          setHostStatus(bot ? { status: bot.observedStatus || "OFFLINE", lastPingAt: bot.lastPingAt } : null);
+        }
       } catch { if (active) setHostStatus(null); }
     };
     void refresh();
@@ -330,10 +335,19 @@ export default function BotControlDashboardPage() {
         </div>
       )}
 
-      <Link href="/dashboard/bots/configuracion" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-500">⚙ Configurar mi bot (token e ID de cliente)</Link>
-      <Link href="/dashboard/bots/tickets" className="ml-3 inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🎫 Configurar paneles y tickets</Link>
-      <Link href="/dashboard/bots/diagnostico" className="ml-3 inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🩺 Diagnóstico del bot</Link>
-      <Link href="/dashboard/bots/integraciones" className="ml-3 inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🛒 Ecommerce e integraciones</Link>
+      {hasActiveSubscription ? (
+        <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/bots/configuracion" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-500">⚙ Configurar mi bot (token e ID de cliente)</Link>
+          <Link href="/dashboard/bots/tickets" className="inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🎫 Configurar paneles y tickets</Link>
+          <Link href="/dashboard/bots/diagnostico" className="inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🩺 Diagnóstico del bot</Link>
+          <Link href="/dashboard/bots/integraciones" className="inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700">🛒 Ecommerce e integraciones</Link>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-amber-800 bg-amber-950/30 p-4 text-sm">
+          <p className="font-semibold text-amber-300">Administración bloqueada</p>
+          <p className="mt-1 text-slate-400">Tu suscripción de bot no está vigente. El bot permanece apagado y las opciones volverán a habilitarse cuando renueves el servicio.</p>
+        </div>
+      )}
       {/* Header & Server Selector */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800">
         <div>
