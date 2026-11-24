@@ -1,3 +1,4 @@
+import {maintenanceState} from "@/lib/maintenance";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
@@ -17,6 +18,7 @@ const active = (s: {status:string;currentPeriodEnd:Date}) =>
 
 export async function GET() {
   const user = await getCurrentUser();
+  if(user&&user.role!=="ADMIN"&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
   if (!user) return NextResponse.json({error:"No autorizado"},{status:401});
   const services = await prisma.service.findMany({
     where: {userId:user.id,serviceType:"DISCORD_BOT"},
@@ -46,6 +48,7 @@ export async function GET() {
 
 export async function POST(req:Request) {
   const user=await getCurrentUser();
+  if(user&&user.role!=="ADMIN"&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
   if(!user) return NextResponse.json({error:"No autorizado"},{status:401});
   const parsed=configSchema.safeParse(await req.json().catch(()=>null));
   if(!parsed.success) return NextResponse.json({error:"Datos de configuración inválidos",fields:parsed.error.flatten().fieldErrors},{status:400});
