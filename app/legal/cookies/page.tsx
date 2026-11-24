@@ -38,7 +38,7 @@ export default function CookiesPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1 text-slate-400">
               <li>
-                <strong>Cookies técnicas estrictamente necesarias:</strong> gestionan la autenticación segura mediante cookies cifradas HTTP-only (evitando accesos no autorizados mediante scripts XSS).
+                <strong>Cookies técnicas estrictamente necesarias:</strong> gestionan la autenticación segura mediante cookies de sesión HTTP-only (evitando accesos no autorizados mediante scripts XSS).
               </li>
               <li>
                 <strong>Cookies de Stripe:</strong> necesarias para la prevención del fraude y la ejecución segura de pagos y suscripciones en el checkout.
@@ -49,6 +49,7 @@ export default function CookiesPage() {
             </p>
           </section>
 
+          <section className="space-y-2"><h2 className="text-lg font-bold text-white">Preferencia del aviso</h2><p>Guardamos tu elección en el navegador (cookie axyon_cookie_notice_v1 y almacenamiento local axyon:cookie-preference:v1) durante un máximo de 12 meses para no mostrar el aviso en cada visita. Puedes cambiarla en Preferencias de cookies, en el pie de página. Si borras los datos del navegador, volveremos a mostrar el aviso.</p></section>
           <section className="space-y-2">
             <h2 className="text-lg font-bold text-white font-display">
               3. Configuración y desactivación en el navegador
