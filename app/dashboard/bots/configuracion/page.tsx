@@ -2,9 +2,12 @@
 
 import React, {useEffect,useState} from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Service = {id:string;name:string;planName:string;subscriptionActive:boolean;expiresAt:string|null;bot:{id:string;applicationId:string|null;guildId:string|null;status:string;observedStatus?:string;lastPingAt?:string|null;tokenConfigured:boolean}|null};
 export default function ConfiguracionBot() {
+ const searchParams=useSearchParams();
+ const requestedBotId=searchParams.get("botId")||"";
  const [services,setServices]=useState<Service[]>([]);
  const [selected,setSelected]=useState("");
  const [applicationId,setApplicationId]=useState("");
@@ -23,11 +26,12 @@ export default function ConfiguracionBot() {
      const data=await res.json();
      const activeServices=(data.services||[]).filter((service:Service)=>service.subscriptionActive);
      setServices(activeServices);
-     setSelected((prev:string)=>activeServices.some((service:Service)=>service.id===prev)?prev:activeServices?.[0]?.id||"");
+     const requestedService=activeServices.find((service:Service)=>service.bot?.id===requestedBotId);
+     setSelected((prev:string)=>requestedService?.id||(activeServices.some((service:Service)=>service.id===prev)?prev:activeServices?.[0]?.id||""));
    }catch(e){setError(e instanceof Error?e.message:"Error de conexión");}
    finally{setLoading(false);}
  };
- useEffect(()=>{void load()},[]);
+ useEffect(()=>{void load()},[requestedBotId]);
  useEffect(()=>{
    const instanceId=services.find(s=>s.id===selected)?.bot?.id;
    if(!instanceId)return;
