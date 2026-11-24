@@ -65,7 +65,7 @@ export default function MisServiciosPage() {
                     <h3 className="text-base font-bold text-white font-display">
                       {service.name}
                     </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${service.isActive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-300 border-amber-500/20"}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${service.isActive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : service.statusLabel==="Impago"||service.statusLabel==="Suspendido" ? "bg-red-500/10 text-red-300 border-red-500/20" : "bg-amber-500/10 text-amber-300 border-amber-500/20"}`}>
                       {service.statusLabel}
                     </span>
                   </div>
@@ -82,6 +82,11 @@ export default function MisServiciosPage() {
                     <span>•</span>
                     <span>Servidor: {service.node}</span>
                   </div>
+                  {!service.isActive && service.statusReason && (
+                    <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
+                      <span className="font-bold">Motivo:</span> {service.statusReason}
+                    </div>
+                  )}
                 </div>
               </div>
 
