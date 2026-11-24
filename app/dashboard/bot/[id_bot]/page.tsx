@@ -110,38 +110,49 @@ export default function BotInstanceDashboardPage() {
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><Clock3 className="w-4 h-4"/>Heartbeat</div><p className="mt-3 text-sm font-semibold">{service.bot?.lastPingAt ? new Date(service.bot.lastPingAt).toLocaleString("es-ES") : "Sin datos"}</p></div>
     </section>
 
-    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6">
-      <aside className="rounded-2xl border border-slate-800 bg-[#111827] p-3 h-fit">
-        <p className="px-3 py-2 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-500">Configuración</p>
-        <div className="space-y-1">{modules.map(module => {
-          const Icon = icons[module.icon] || Settings;
-          const disabled = module.requiresGuild && !service.bot?.guildId;
-          const active = module.key === selectedModule.key;
-          return disabled ? <div key={module.key} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-slate-600 cursor-not-allowed"><Icon className="w-4 h-4"/><span>{module.shortLabel}</span></div>
-            : <Link key={module.key} href={module.href(botId, service.bot?.guildId)} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${active ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}><Icon className="w-4 h-4"/><span>{module.shortLabel}</span></Link>;
-        })}</div>
-      </aside>
-
-      <section className="space-y-5">
-        <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
-          <div className="flex items-start gap-4">
-            {(() => { const Icon = icons[selectedModule.icon] || Settings; return <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Icon className="w-5 h-5"/></div>; })()}
-            <div className="flex-1"><p className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">{groupLabels[selectedModule.group]}</p><h2 className="mt-1 text-xl font-bold">{selectedModule.label}</h2><p className="mt-2 text-sm text-slate-400">{selectedModule.description}</p></div>
+    <section className="space-y-5">
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
+        <div className="flex items-start gap-4">
+          {(() => { const Icon = icons[selectedModule.icon] || Settings; return <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Icon className="w-5 h-5"/></div>; })()}
+          <div className="flex-1">
+            <p className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">{groupLabels[selectedModule.group]}</p>
+            <h2 className="mt-1 text-xl font-bold">{selectedModule.label}</h2>
+            <p className="mt-2 text-sm text-slate-400">{selectedModule.description}</p>
           </div>
         </div>
+      </div>
 
-        {selectedModule.key === "overview" ? <div className="grid sm:grid-cols-2 gap-4">{modules.filter(module => module.key !== "overview").map(module => {
-          const Icon = icons[module.icon] || Settings;
-          const disabled = module.requiresGuild && !service.bot?.guildId;
-          return <Link key={module.key} href={disabled ? "#" : module.href(botId, service.bot?.guildId)} aria-disabled={disabled} className={`rounded-2xl border bg-[#111827] p-5 transition-all ${disabled ? "border-slate-800 opacity-40 pointer-events-none" : "border-slate-800 hover:border-blue-500/40 hover:-translate-y-0.5"}`}>
-            <div className="flex items-start justify-between gap-4"><div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center"><Icon className="w-5 h-5"/></div><ExternalLink className="w-4 h-4 text-slate-600"/></div>
-            <h3 className="mt-4 font-bold">{module.label}</h3><p className="mt-2 text-xs leading-relaxed text-slate-400">{module.description}</p>
-          </Link>;
-        })}</div> : <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
-          <p className="text-sm text-slate-300">Esta configuración forma parte del panel de <strong>{service.name}</strong>.</p>
-          <Link href={selectedModule.href(botId, service.bot?.guildId)} className="inline-flex rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500">Abrir {selectedModule.shortLabel}</Link>
-        </div>}
-      </section>
-    </div>
+      {selectedModule.key === "overview" ? (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {modules.filter(module => module.key !== "overview").map(module => {
+            const Icon = icons[module.icon] || Settings;
+            const disabled = module.requiresGuild && !service.bot?.guildId;
+            const managerHref = `/dashboard/bot/${botId}?section=${encodeURIComponent(module.key)}`;
+            return <Link key={module.key} href={disabled ? "#" : managerHref} aria-disabled={disabled}
+              className={`rounded-2xl border bg-[#111827] p-5 transition-all ${disabled ? "border-slate-800 opacity-40 pointer-events-none" : "border-slate-800 hover:border-blue-500/40 hover:-translate-y-0.5"}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 flex items-center justify-center"><Icon className="w-5 h-5"/></div>
+                <ExternalLink className="w-4 h-4 text-slate-600"/>
+              </div>
+              <h3 className="mt-4 font-bold">{module.label}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-400">{module.description}</p>
+            </Link>;
+          })}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
+          <p className="text-sm text-slate-300">Estás administrando exclusivamente <strong>{service.name}</strong>. Los cambios de esta sección se aplican únicamente a esta instancia.</p>
+          {selectedModule.key === "automations" ? (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-slate-300">
+              El constructor visual de automatizaciones se integrará directamente aquí dentro del Bot Manager.
+            </div>
+          ) : (
+            <Link href={selectedModule.href(botId, service.bot?.guildId)} className="inline-flex rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500">
+              Abrir editor de {selectedModule.shortLabel}
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
   </main>;
 }
