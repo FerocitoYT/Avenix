@@ -34,6 +34,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
   { key:"employees",label:"Gestión de empleados",shortLabel:"Empleados",description:"Directorio, puestos, altas, bajas y actividades.",icon:"user-check",group:"DISCORD",order:37,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=employees` },
   { key:"analytics",label:"Estadísticas del servidor",shortLabel:"Estadísticas",description:"Actividad diaria y métricas del servidor.",icon:"activity",group:"DISCORD",order:38,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=analytics` },
   { key:"scheduled-messages",label:"Mensajes programados",shortLabel:"Programación",description:"Mensajes automáticos y recurrentes.",icon:"history",group:"AUTOMATION",order:75,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=scheduled-messages` },
+  { key:"invites",label:"Seguimiento de invitaciones",shortLabel:"Invitaciones",description:"Historial y clasificación de invitadores.",icon:"user-check",group:"DISCORD",order:39,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=invites` },
   {
     key: "tickets", label: "Tickets", shortLabel: "Tickets",
     description: "Paneles, categorías, formularios, roles de soporte y mensajes.",
