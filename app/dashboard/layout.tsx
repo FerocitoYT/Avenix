@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AvenixLogo } from "@/components/brand/logo";
 import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
+import { BotManagerShell } from "@/components/dashboard/bot-manager-shell";
 import {
   LayoutDashboard,
   Bot,
@@ -128,6 +129,10 @@ export default function DashboardLayout({
         </div>
       </div>
     );
+  }
+
+  if (pathname.startsWith("/dashboard/bot/")) {
+    return <BotManagerShell>{children}</BotManagerShell>;
   }
 
   return (
