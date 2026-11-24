@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Bot,
@@ -44,9 +45,14 @@ interface Guild {
 }
 
 export default function BotControlDashboardPage() {
+  const searchParams = useSearchParams();
+  const requestedGuildId = searchParams.get("guildId") || "";
+  const requestedSection = searchParams.get("section");
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [selectedGuildId, setSelectedGuildId] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"security" | "tickets" | "welcome" | "studio" | "custom_bot">("security");
+  const [activeTab, setActiveTab] = useState<"security" | "tickets" | "welcome" | "studio" | "custom_bot">(
+    requestedSection === "tickets" || requestedSection === "welcome" || requestedSection === "studio" || requestedSection === "custom_bot" ? requestedSection : "security"
+  );
   const [loading, setLoading] = useState<boolean>(true);
   const [hostStatus, setHostStatus] = useState<{status:string;lastPingAt:string|null}|null>(null);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
@@ -140,7 +146,7 @@ export default function BotControlDashboardPage() {
   // Load all guilds
   useEffect(() => {
     fetchGuilds();
-  }, []);
+  }, [requestedGuildId]);
 
   const fetchGuilds = async () => {
     setLoading(true);
@@ -149,8 +155,9 @@ export default function BotControlDashboardPage() {
       const data = await res.json();
       if (data.success && data.guilds?.length > 0) {
         setGuilds(data.guilds);
-        setSelectedGuildId(data.guilds[0].id);
-        loadGuildDetails(data.guilds[0].id);
+        const initialGuild = data.guilds.find((guild: Guild) => guild.id === requestedGuildId) || data.guilds[0];
+        setSelectedGuildId(initialGuild.id);
+        loadGuildDetails(initialGuild.id);
       }
     } catch (err) {
       console.error("Error al cargar servidores:", err);
@@ -322,6 +329,12 @@ export default function BotControlDashboardPage() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (requestedSection === "security" || requestedSection === "tickets" || requestedSection === "welcome" || requestedSection === "studio" || requestedSection === "custom_bot") {
+      setActiveTab(requestedSection);
+    }
+  }, [requestedSection]);
 
   const currentGuild = guilds.find((g) => g.id === selectedGuildId);
 
