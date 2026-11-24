@@ -191,6 +191,7 @@ export function Footer() {
                   Términos de Servicio
                 </Link>
               </li>
+              <li><Link href="/changelogs" className="hover:text-blue-400 transition-colors">Novedades / Changelogs</Link></li>
               <li><CookieSettingsLink /></li>
               <li className="pt-2 text-xs text-slate-500">
                 <span className="block text-slate-400 font-medium">Contacto directo:</span>
