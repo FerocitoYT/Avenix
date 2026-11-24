@@ -15,6 +15,7 @@ export default function IntegrationsPage(){
  const [error,setError]=useState("");
  const [message,setMessage]=useState("");
  const [saving,setSaving]=useState(false);
+ const [rules,setRules]=useState<{event:string;enabled:boolean}[]>([{event:"order.created",enabled:true},{event:"order.updated",enabled:true},{event:"order.deleted",enabled:false}]);
  useEffect(()=>{fetch("/api/client/bot-config",{cache:"no-store"}).then(r=>r.json()).then(d=>{
   const list=(d.services||[]).filter((s:Service)=>s.subscriptionActive&&s.bot?.id);
   setServices(list);if(list.length)setBotId(list[0].bot!.id);
