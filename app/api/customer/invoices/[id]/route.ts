@@ -1,6 +1,7 @@
 import {getCurrentUser} from "@/lib/auth";
 import {prisma} from "@/lib/prisma";
 import {invoicePdf} from "@/lib/invoice-pdf";
+import {readInvoiceIssuer} from "@/lib/invoice-issuer";
 import {NextResponse} from "next/server";
 import {z} from "zod";
 export const dynamic="force-dynamic";
@@ -18,7 +19,7 @@ export async function GET(_req:Request,{params}:{params:{id:string}}){
  const key="invoice:document:"+invoice.id;
  let stored=await prisma.setting.findUnique({where:{key}});
  if(!stored){
-  const issuer=party.safeParse({name:process.env.INVOICE_ISSUER_NAME,taxId:process.env.INVOICE_ISSUER_TAX_ID,address:process.env.INVOICE_ISSUER_ADDRESS});
+  const issuer=await readInvoiceIssuer();
   if(!issuer.success)return NextResponse.json({error:"Datos fiscales del emisor pendientes de configuración. Contacta con soporte."},{status:409});
   const customer={name:(invoice.user.companyName||invoice.user.name).slice(0,100),taxId:(invoice.user.taxId||"").slice(0,40),address:[invoice.user.address,invoice.user.postalCode,invoice.user.city,invoice.user.country].filter(Boolean).join(", ").slice(0,140)};
   const concept=(invoice.subscription?.planName||invoice.order?.services[0]?.planName||"Servicios Axyon").slice(0,140);
