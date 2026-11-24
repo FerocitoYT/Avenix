@@ -30,6 +30,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     href: botId => `/dashboard/bot/${botId}?section=security`,
   },
   { key:"absences",label:"Sistema de ausencias",shortLabel:"Ausencias",description:"Roles temporales, duración y gestión de ausencias.",icon:"user-check",group:"DISCORD",order:35,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=absences` },
+  { key:"recruitment",label:"Formularios y contrataciones",shortLabel:"Contrataciones",description:"Editor de formularios y revisión de candidaturas.",icon:"user-check",group:"DISCORD",order:36,requiresGuild:true,href:botId=>`/dashboard/bot/${botId}?section=recruitment` },
   {
     key: "tickets", label: "Tickets", shortLabel: "Tickets",
     description: "Paneles, categorías, formularios, roles de soporte y mensajes.",
