@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -27,6 +27,26 @@ const ORDER_STEPS = [
 
 export default function MisPedidosPage() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const loadOrders = async () => {
+      try {
+        const response = await fetch("/api/client/orders", { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "No se pudieron cargar tus pedidos");
+        if (active) setOrders(data.orders || []);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Error cargando pedidos");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void loadOrders();
+    return () => { active = false; };
+  }, []);
 
   const getStepProgress = (status: OrderStatus) => {
     switch (status) {
@@ -109,7 +129,10 @@ export default function MisPedidosPage() {
         </Link>
       </div>
 
-      {orders.length > 0 ? (
+      {error && <div className="rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm text-red-300">{error}</div>}
+      {loading ? (
+        <div className="rounded-2xl bg-[#111827] border border-slate-800 p-8 text-center text-sm text-slate-400">Cargando tus pedidos…</div>
+      ) : orders.length > 0 ? (
         <div className="space-y-6">
           {orders.map((order) => {
             const progress = getStepProgress(order.status);
