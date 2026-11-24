@@ -75,6 +75,16 @@ const payload = JSON.stringify({
     footer: { text: `Axyon Control · main · ${sha.slice(0,7)}` },
     timestamp: new Date().toISOString(),
   }],
+  components: [{
+    type: 1,
+    components: [{
+      type: 2,
+      style: 5,
+      label: 'Ver Cambios',
+      emoji: { name: '🔎' },
+      url: `${server}/${repo}/compare/${before.slice(0,12)}...${sha.slice(0,12)}`,
+    }],
+  }],
 });
 
 let delivered = false;
