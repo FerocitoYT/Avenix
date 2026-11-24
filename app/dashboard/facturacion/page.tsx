@@ -127,7 +127,7 @@ export default function FacturacionPage() {
             <Receipt className="w-4 h-4 text-blue-400" />
             <span>Facturas Emitidas</span>
           </h2>
-          <span className="text-xs text-slate-400">21% IVA legal incluido</span>
+          <span className="text-xs text-slate-400">Impuestos según factura</span>
         </div>
 
         {invoices.length > 0 ? (
@@ -139,7 +139,7 @@ export default function FacturacionPage() {
                   <th className="pb-3">Concepto</th>
                   <th className="pb-3">Fecha</th>
                   <th className="pb-3">Base Imponible</th>
-                  <th className="pb-3">IVA (21%)</th>
+                  <th className="pb-3">IVA</th>
                   <th className="pb-3">Total</th>
                   <th className="pb-3">Estado</th>
                   <th className="pb-3 pr-2 text-right">Descarga</th>
@@ -165,9 +165,7 @@ export default function FacturacionPage() {
                     </td>
                     <td className="py-3.5 pr-2 text-right">
                       <button
-                        onClick={() => {
-                          alert(`Generando y descargando documento oficial en PDF para la factura ${inv.invoiceNumber}`);
-                        }}
+                        onClick={() => window.open("/api/customer/invoices/"+encodeURIComponent(inv.id),"_blank","noopener,noreferrer")}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
                         title="Descargar PDF de Factura"
                       >
