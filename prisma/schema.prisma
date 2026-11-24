@@ -464,6 +464,8 @@ model BotInstance {
   service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   configuration    BotConfiguration?
 
+  integrationDeliveries IntegrationDelivery[]
+
   @@index([serviceId])
   @@index([status])
 }
@@ -1125,4 +1127,33 @@ enum BotInstanceStatus {
   ONLINE
   ERROR
   SUSPENDED
+}
+
+
+/**
+ * Durable webhook delivery queue shared by the Control API and the Discloud worker.
+ * Payload is a minimal, non-PII summary; never store bearer tokens, billing
+ * addresses or full WooCommerce order/customer records here.
+ */
+model IntegrationDelivery {
+  id            String      @id @default(cuid())
+  botId         String
+  integrationId String
+  eventId       String
+  provider      String
+  eventType     String
+  payload       Json
+  status        String      @default("PENDING")
+  attempts      Int         @default(0)
+  nextAttemptAt DateTime    @default(now())
+  lastError     String?     @db.Text
+  deliveredAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  bot           BotInstance @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, eventId])
+  @@index([status, nextAttemptAt])
+  @@index([botId, createdAt])
 }
