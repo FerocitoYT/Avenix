@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { fulfillOrder } from "@/lib/fulfillment";
+import { queuePaymentLogsForUser } from "@/lib/discord-log-events";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,12 @@ export async function POST(req: Request) {
             });
 
             if (subscription) {
+              await queuePaymentLogsForUser({
+                userId:subscription.userId,
+                title:"Renovación pagada",
+                description:`Stripe ha confirmado una renovación de ${((invoice.amount_paid||0)/100).toFixed(2)} €.`,
+                metadata:{stripeInvoiceId:invoice.id,subscriptionId:subscription.id}
+              });
               // Extend period
               const newEnd = new Date();
               if (subscription.interval === "YEAR") {

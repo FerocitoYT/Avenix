@@ -13,6 +13,7 @@ import { BotDeliveriesPanel } from "@/components/dashboard/bot-deliveries-panel"
 import { BotStudioPanel } from "@/components/dashboard/bot-studio-panel";
 import { BotVerificationPanel } from "@/components/dashboard/bot-verification-panel";
 import { BotSecurityPanel } from "@/components/dashboard/bot-security-panel";
+import { BotLogsPanel } from "@/components/dashboard/bot-logs-panel";
 
 type Service = {
   id: string; name: string; planName: string; subscriptionActive: boolean; expiresAt: string | null;
@@ -151,6 +152,8 @@ export default function BotInstanceDashboardPage() {
             <BotSecurityPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "verification" && service.bot?.guildId ? (
             <BotVerificationPanel guildId={service.bot.guildId} />
+          ) : selectedModule.key === "logs" && service.bot?.guildId ? (
+            <BotLogsPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "studio" && service.bot?.guildId ? (
             <BotStudioPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "automations" ? (

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { queuePaymentLogsForUser } from "@/lib/discord-log-events";
 
 export interface FulfillOrderParams {
   orderId?: string;
@@ -255,6 +256,13 @@ export async function fulfillOrder(params: FulfillOrderParams) {
       type: "ORDER",
       link: "/dashboard/bots",
     },
+  });
+
+  await queuePaymentLogsForUser({
+    userId:effectiveUserId,
+    title:"Pago confirmado",
+    description:`Pago de ${(totalCents/100).toFixed(2)} € confirmado mediante ${paymentGateway} para el pedido ${order.orderNumber}.`,
+    metadata:{orderId:order.id,orderNumber:order.orderNumber,invoiceNumber:invoice?.invoiceNumber,gateway:paymentGateway,serviceId:service.id}
   });
 
   // 7. Audit Log

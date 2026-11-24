@@ -72,6 +72,12 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     href: botId => `/dashboard/bots/integraciones/historial?botId=${encodeURIComponent(botId)}`,
   },
   {
+    key: "logs", label: "Sistema de logs", shortLabel: "Logs",
+    description: "Canales separados para registros generales, moderación, tickets, pagos y eventos internos del bot.",
+    icon: "history", group: "SYSTEM", order: 95, requiresGuild: true,
+    href: botId => `/dashboard/bot/${botId}?section=logs`,
+  },
+  {
     key: "diagnostics", label: "Diagnóstico", shortLabel: "Diagnóstico",
     description: "Heartbeat, intents, credenciales y estado observado por la infraestructura.",
     icon: "activity", group: "SYSTEM", order: 100, requiresGuild: true,

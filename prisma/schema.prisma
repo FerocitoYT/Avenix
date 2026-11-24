@@ -544,6 +544,8 @@ model Guild {
   welcomeConfig     WelcomeConfig?
   verificationConfig VerificationConfig?
   verificationRecords VerificationRecord[]
+  logConfig          GuildLogConfig?
+  logEvents          DiscordLogEvent[]
   autoRoles         AutoRole[]
   roleMenus         RoleMenu[]
   temporaryRoles    TemporaryRole[]
@@ -954,6 +956,35 @@ model MemberRestoreJob {
 
   @@index([botInstanceId, status, createdAt])
   @@index([sourceGuildId, createdAt])
+}
+
+model GuildLogConfig {
+  id                  String   @id @default(cuid())
+  guildId             String   @unique
+  generalChannelId    String?
+  moderationChannelId String?
+  ticketsChannelId    String?
+  paymentsChannelId   String?
+  botsChannelId       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  guild               Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+}
+
+model DiscordLogEvent {
+  id          String   @id @default(cuid())
+  guildId     String
+  category    String
+  title       String
+  description String   @db.Text
+  metadata    Json?
+  status      String   @default("PENDING")
+  attempts    Int      @default(0)
+  lastError   String?  @db.Text
+  createdAt   DateTime @default(now())
+  deliveredAt DateTime?
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  @@index([guildId, status, createdAt])
 }
 
 model AutoRole {
