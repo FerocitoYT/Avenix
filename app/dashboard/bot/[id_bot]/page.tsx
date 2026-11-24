@@ -18,6 +18,7 @@ import { BotEmployeesPanel } from "@/components/dashboard/bot-employees-panel";
 import { BotAutomationsPanel } from "@/components/dashboard/bot-automations-panel";
 import { BotAnalyticsPanel } from "@/components/dashboard/bot-analytics-panel";
 import { BotScheduledMessagesPanel } from "@/components/dashboard/bot-scheduled-messages-panel";
+import { BotInvitesPanel } from "@/components/dashboard/bot-invites-panel";
 import { BotSecurityPanel } from "@/components/dashboard/bot-security-panel";
 import { BotLogsPanel } from "@/components/dashboard/bot-logs-panel";
 
@@ -166,6 +167,8 @@ export default function BotInstanceDashboardPage() {
             <BotAnalyticsPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "scheduled-messages" && service.bot?.guildId ? (
             <BotScheduledMessagesPanel guildId={service.bot.guildId} />
+          ) : selectedModule.key === "invites" && service.bot?.guildId ? (
+            <BotInvitesPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "security" && service.bot?.guildId ? (
             <BotSecurityPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "verification" && service.bot?.guildId ? (
