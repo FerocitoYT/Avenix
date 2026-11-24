@@ -64,17 +64,16 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
     return()=>{active=false};
   },[botId]);
 
-  const routeFor=(key:string)=>`/dashboard/bot/${botId}${key==="overview"?"":`?section=${encodeURIComponent(key)}`}`;
   const renderModule=(module:typeof modules[number])=>{
       const Icon=icons[module.icon]||Settings;
-      const disabled=module.requiresGuild&&!bot?.guildId;
+      const disabled=!!bot&&module.requiresGuild&&!bot.guildId;
       const active=section===module.key;
       return disabled ? (
         <div key={module.key} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-500 cursor-not-allowed">
           <Icon className="w-4 h-4"/><span>{module.shortLabel}</span>
         </div>
       ) : (
-        <Link key={module.key} href={routeFor(module.key)} onClick={()=>setMobileOpen(false)}
+        <Link key={module.key} href={module.href(botId,bot?.guildId)} onClick={()=>setMobileOpen(false)}
           className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-all ${active?"bg-blue-600 text-white shadow-md shadow-blue-500/20":"text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}>
           <Icon className="w-4 h-4"/><span>{module.shortLabel}</span>
         </Link>
