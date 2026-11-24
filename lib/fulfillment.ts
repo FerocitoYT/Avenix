@@ -72,13 +72,14 @@ export async function fulfillOrder(params: FulfillOrderParams) {
   const effectiveUserId = order.userId;
 
   // 2. Idempotency Check:
-  // If the order is already ACCEPTED and has an active service, do not duplicate provision!
+  // If a ready-made bot order is already completed (or an older record is still ACCEPTED)
+  // and has a provisioned service, do not duplicate provision.
   const existingService = await prisma.service.findFirst({
     where: { orderId: order.id },
     include: { botInstance: true },
   });
 
-  if (order.status === "ACCEPTED" && existingService) {
+  if ((order.status === "ACCEPTED" || order.status === "COMPLETED") && existingService) {
     return {
       success: true,
       alreadyFulfilled: true,
@@ -88,8 +89,8 @@ export async function fulfillOrder(params: FulfillOrderParams) {
     };
   }
 
-  // 3. Mark Order as ACCEPTED
-  const updatedOrder = await prisma.order.update({
+  // 3. Payment accepted. Ready-made bot orders will be marked COMPLETED after provisioning.
+  let updatedOrder = await prisma.order.update({
     where: { id: order.id },
     data: {
       status: "ACCEPTED",
@@ -226,6 +227,22 @@ export async function fulfillOrder(params: FulfillOrderParams) {
             ? gatewayTransactionId
             : undefined,
       },
+    });
+  }
+
+  // Standard Axyon bots are ready-made products: once the service has been
+  // provisioned there is no development/review phase. Complete the order immediately.
+  const isReadyMadeBot = service.serviceType === "DISCORD_BOT" && (
+    planId === "price-bot-monthly" ||
+    planId === "price-bot-annual" ||
+    planId === "bot_mensual_9" ||
+    planId === "bot_anual_70" ||
+    ["mensual", "anual", "avenix bot mensual", "avenix bot anual"].includes(service.planName.toLowerCase())
+  );
+  if (isReadyMadeBot && updatedOrder.status !== "COMPLETED") {
+    updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: { status: "COMPLETED" },
     });
   }
 
