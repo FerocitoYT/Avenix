@@ -7,7 +7,7 @@ import { encryptSecret, maskToken } from "@/lib/crypto";
 export const dynamic = "force-dynamic";
 export async function GET(req:Request) {
  const user=await getCurrentUser();
-  if(user&&user.role!=="ADMIN"&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
+  if(user&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
  if(!user)return NextResponse.json({error:"No autorizado"},{status:401});
  const guildId=new URL(req.url).searchParams.get("guildId");
  const where=user.role==="ADMIN"?(guildId?{guildId}:{}):(guildId?{guildId,userId:user.id}:{userId:user.id});
@@ -19,7 +19,7 @@ export async function GET(req:Request) {
 }
 export async function POST(req:Request) {
  const user=await getCurrentUser();
-  if(user&&user.role!=="ADMIN"&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
+  if(user&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
  if(!user)return NextResponse.json({error:"No autorizado"},{status:401});
  const body=await req.json().catch(()=>null);
  if(!body||typeof body.guildId!=="string"||!/^\d{17,20}$/.test(body.guildId)||
