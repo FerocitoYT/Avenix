@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Check = { key:string; label:string; status:"ok"|"pending"|"error"; detail:string };
 type Result = { status:string; lastHeartbeatAt:string|null; checks:Check[]; limitations:string[] };
 export default function DiagnosticsPage() {
+  const searchParams=useSearchParams();
+  const requestedGuildId=searchParams.get("guildId")||"";
   const [guilds,setGuilds]=useState<{id:string;name:string}[]>([]);
   const [guildId,setGuildId]=useState("");
   const [result,setResult]=useState<Result|null>(null);
@@ -13,9 +16,9 @@ export default function DiagnosticsPage() {
   useEffect(()=>{
     fetch("/api/client/bot-config",{cache:"no-store"}).then(r=>r.json()).then(d=>{
       const list=(d.services||[]).filter((s:any)=>s.subscriptionActive&&s.bot?.guildId).map((s:any)=>({id:s.bot.guildId,name:s.name}));
-      setGuilds(list);if(list.length)setGuildId(list[0].id);
+      setGuilds(list);if(list.length)setGuildId(list.some((g:{id:string})=>g.id===requestedGuildId)?requestedGuildId:list[0].id);
     }).catch(()=>setError("No se pudieron cargar los servicios."));
-  },[]);
+  },[requestedGuildId]);
   useEffect(()=>{
     if(!guildId)return;
     let active=true;
