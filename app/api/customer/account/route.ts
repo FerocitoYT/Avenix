@@ -1,0 +1,11 @@
+import {getCurrentUser,hashPassword,verifyPassword} from "@/lib/auth";
+import {prisma} from "@/lib/prisma";
+import {NextResponse} from "next/server";
+import {z} from "zod";
+export const dynamic="force-dynamic";
+const select={name:true,email:true,companyName:true,taxId:true,address:true,city:true,postalCode:true,country:true,discordUsername:true,discordId:true} as const;
+const field=z.string().trim().max(180);
+const profile=z.object({name:field.min(1),companyName:field,taxId:field,address:field,city:field,postalCode:field,country:field});
+export async function GET(){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"No autorizado"},{status:401});const p=await prisma.user.findUnique({where:{id:u.id},select});return p?NextResponse.json({profile:p},{headers:{"Cache-Control":"no-store"}}):NextResponse.json({error:"Cuenta no encontrada"},{status:404});}
+export async function PATCH(req:Request){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"No autorizado"},{status:401});const p=profile.safeParse(await req.json().catch(()=>null));if(!p.success)return NextResponse.json({error:"Datos inválidos"},{status:400});const data=await prisma.user.update({where:{id:u.id},data:p.data,select});return NextResponse.json({profile:data});}
+export async function POST(req:Request){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"No autorizado"},{status:401});const p=z.object({currentPassword:z.string().min(1).max(72),newPassword:z.string().min(8).max(72)}).safeParse(await req.json().catch(()=>null));if(!p.success||Buffer.byteLength(p.data.newPassword)>72)return NextResponse.json({error:"Contraseña inválida"},{status:400});const row=await prisma.user.findUnique({where:{id:u.id},select:{passwordHash:true}});if(!row?.passwordHash||!await verifyPassword(p.data.currentPassword,row.passwordHash))return NextResponse.json({error:"Contraseña actual incorrecta o cuenta sin contraseña local"},{status:403});const hash=await hashPassword(p.data.newPassword);const result=await prisma.user.updateMany({where:{id:u.id,passwordHash:row.passwordHash},data:{passwordHash:hash}});return result.count?NextResponse.json({success:true}):NextResponse.json({error:"La contraseña cambió; vuelve a intentarlo"},{status:409});}
