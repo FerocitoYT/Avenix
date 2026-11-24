@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   Mail,
@@ -16,17 +16,9 @@ import {
 } from "lucide-react";
 
 export default function MiCuentaPage() {
-  const [profile, setProfile] = useState({
-    name: "Cliente Avenix",
-    email: "cliente@empresa.com",
-    companyName: "Mi Comunidad Discord",
-    taxId: "B12345678", // NIF/CIF
-    address: "Paseo de la Castellana 120",
-    city: "Madrid",
-    postalCode: "28046",
-    country: "España",
-    discordUsername: "cliente_pro",
-  });
+  const [profile,setProfile]=useState({name:"",email:"",companyName:"",taxId:"",address:"",city:"",postalCode:"",country:"",discordUsername:""});
+  const [ready,setReady]=useState(false),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+  useEffect(()=>{let alive=true;fetch("/api/customer/account",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(alive){setProfile(Object.fromEntries(Object.keys(profile).map(k=>[k,d.profile[k]??""])) as typeof profile);setReady(true)}}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[]);
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -37,23 +29,9 @@ export default function MiCuentaPage() {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
-  };
-
-  const handleUpdatePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("Las nuevas contraseñas no coinciden.");
-      return;
-    }
-    setPasswordSuccess(true);
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setTimeout(() => setPasswordSuccess(false), 3000);
-  };
-
+  const handleSaveProfile=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);setError("");setSavedSuccess(false);try{const r=await fetch("/api/customer/account",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(profile)});const d=await r.json();if(!r.ok)throw Error(d.error);setSavedSuccess(true)}catch(e){setError(e instanceof Error?e.message:"Error guardando datos")}finally{setBusy(false)}};
+  const handleUpdatePassword=async(e:React.FormEvent)=>{e.preventDefault();setError("");setPasswordSuccess(false);if(passwordForm.newPassword!==passwordForm.confirmPassword){setError("Las contraseñas no coinciden");return;}setBusy(true);try{const r=await fetch("/api/customer/account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(passwordForm)});const d=await r.json();if(!r.ok)throw Error(d.error);setPasswordSuccess(true);setPasswordForm({currentPassword:"",newPassword:"",confirmPassword:""})}catch(e){setError(e instanceof Error?e.message:"Error cambiando contraseña")}finally{setBusy(false)}};
+  if(!ready)return <div className="p-8 text-slate-300">{error||"Cargando datos reales de tu cuenta…"}</div>;
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-5xl mx-auto">
       {/* Header */}
@@ -66,6 +44,7 @@ export default function MiCuentaPage() {
         </p>
       </div>
 
+      {error&&<p role="alert" className="text-red-400">{error}</p>}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Profile & Billing Data */}
         <div className="lg:col-span-2 space-y-8">
@@ -133,7 +112,7 @@ export default function MiCuentaPage() {
                   <input
                     type="text"
                     value={profile.discordUsername}
-                    onChange={(e) => setProfile({ ...profile, discordUsername: e.target.value })}
+                    readOnly
                     className="w-full px-4 py-2.5 rounded-xl bg-[#0B1220] border border-slate-800 text-white text-xs focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -165,9 +144,11 @@ export default function MiCuentaPage() {
                 </div>
               </div>
 
+              <div className="grid sm:grid-cols-3 gap-3">{(["companyName","city","country"] as const).map((k,i)=><label key={k} className="text-xs text-slate-300">{["Empresa","Ciudad","País"][i]}<input value={profile[k]} onChange={e=>setProfile({...profile,[k]:e.target.value})} className="block w-full mt-1 p-3 bg-[#0B1220] border border-slate-800 rounded-xl"/></label>)}</div>
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
+                  disabled={busy}
                   className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
                 >
                   <Save className="w-3.5 h-3.5" />
@@ -272,7 +253,7 @@ export default function MiCuentaPage() {
               <div className="p-3.5 rounded-xl bg-[#0B1220] border border-slate-800 space-y-1">
                 <span className="font-semibold text-white block">Protección RGPD</span>
                 <p className="text-[11px] text-slate-400">
-                  Tus contraseñas están cifradas con salt de 12 rondas con bcrypt. Nunca se guardan en texto claro.
+                  Tus contraseñas están protegidas mediante hash con salt de 12 rondas con bcrypt. Nunca se guardan en texto claro.
                 </p>
               </div>
             </div>
