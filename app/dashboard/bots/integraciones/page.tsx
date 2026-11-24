@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Service = { id: string; name: string; subscriptionActive: boolean; bot?: { id: string } | null };
 type Rule = { event: "order.created" | "order.updated" | "order.deleted"; enabled: boolean; title?: string; minTotal?: number; statuses?: string[] };
@@ -11,6 +12,8 @@ const defaultRules: Rule[] = [
   { event: "order.deleted", enabled: false },
 ];
 export default function IntegrationsPage() {
+  const searchParams=useSearchParams();
+  const requestedBotId=searchParams.get("botId")||"";
   const [services, setServices] = useState<Service[]>([]);
   const [botId, setBotId] = useState("");
   const [stores, setStores] = useState<Store[]>([]);
@@ -60,9 +63,9 @@ export default function IntegrationsPage() {
     fetch("/api/client/bot-config", { cache: "no-store" }).then(r => r.json()).then(data => {
       const available: Service[] = (data.services || []).filter((s: Service) => s.subscriptionActive && s.bot?.id);
       setServices(available);
-      if (available.length) setBotId(available[0].bot!.id);
+      if (available.length) setBotId(available.some(service=>service.bot?.id===requestedBotId)?requestedBotId:available[0].bot!.id);
     }).catch(() => setError("No se pudieron cargar los servicios"));
-  }, []);
+  }, [requestedBotId]);
   useEffect(() => { if (botId) void loadStores(botId); }, [botId]);
 
   async function save() {
