@@ -1,3 +1,4 @@
+import {CookieNotice} from "@/components/cookie-notice";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
@@ -58,6 +59,7 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-[#0B1220] text-[#F8FAFC] min-h-screen selection:bg-blue-500/30 selection:text-white">
         <div className="relative flex min-h-screen flex-col">
           {children}
+          <CookieNotice />
         </div>
       </body>
     </html>
