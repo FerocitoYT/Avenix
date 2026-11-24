@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
 import { Bot, AlertCircle, ArrowRight, Server, CreditCard, CheckCircle2 } from "lucide-react";
 
 type Service = {
@@ -21,6 +22,7 @@ type Service = {
 };
 
 export default function BotsPage() {
+  const modules=orderedBotDashboardModules().filter(m=>m.key!=="overview");
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,7 +40,7 @@ export default function BotsPage() {
     return () => { active = false; };
   }, []);
 
-  return <main className="mx-auto max-w-6xl p-6 md:p-10 text-white space-y-7">
+  return <main className="mx-auto max-w-7xl p-4 md:p-10 text-white space-y-7">
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-800 pb-6">
       <div>
         <h1 className="text-3xl font-extrabold">Gestión de Bots</h1>
@@ -54,7 +56,7 @@ export default function BotsPage() {
       <h2 className="font-bold">No tienes servicios de bot</h2>
       <p className="text-sm text-slate-400">Cuando contrates uno aparecerá aquí automáticamente.</p>
     </div> :
-    <div className="grid md:grid-cols-2 gap-5">
+    <div className="grid xl:grid-cols-2 gap-5">
       {services.map(service => {
         const observed = service.bot?.observedStatus || service.bot?.status || "STOPPED";
         return <article key={service.id} className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-5">
@@ -78,6 +80,7 @@ export default function BotsPage() {
             {service.subscriptionActive && service.bot ? <Link href={`/dashboard/bot/${service.bot.id}`} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-500">Abrir panel <ArrowRight className="w-4 h-4"/></Link>
             : <span className="inline-flex items-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 px-4 py-2.5 text-amber-300"><AlertCircle className="w-4 h-4"/>Administración bloqueada</span>}
           </div>
+          {service.subscriptionActive&&service.bot&&<details className="rounded-xl border border-slate-700 p-3" open><summary className="cursor-pointer font-semibold text-sm">Todos los módulos ({modules.length})</summary><div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">{modules.map(m=><Link key={m.key} href={m.href(service.bot!.id,service.bot!.guildId)} className="min-w-0 rounded-lg border border-slate-800 bg-slate-950 p-3 hover:border-blue-500"><span className="block text-sm font-semibold break-words">{m.label}</span><span className="block text-xs text-slate-400 mt-1">{m.requiresGuild&&!service.bot!.guildId?"Requiere vincular servidor":m.description}</span></Link>)}</div></details>}
         </article>;
       })}
     </div>}
