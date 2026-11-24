@@ -36,6 +36,16 @@ export default function AdminConfiguracionPage() {
     e.preventDefault();setIssuerBusy(true);setIssuerMessage("");setIssuerError(false);
     try{const r=await fetch("/api/admin/invoice-issuer",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(issuer)});const d=await r.json();if(!r.ok)throw Error(d.error||"No se pudo guardar");setIssuer(d.issuer);setIssuerMessage("Datos fiscales guardados correctamente.");}catch(e){setIssuerError(true);setIssuerMessage(e instanceof Error?e.message:"No se pudo guardar");}finally{setIssuerBusy(false);}
   }
+  const [paypal,setPaypal]=useState({enabled:false,email:""});
+  const [paypalReady,setPaypalReady]=useState(false);
+  const [paypalBusy,setPaypalBusy]=useState(false);
+  const [paypalMessage,setPaypalMessage]=useState("");
+  const [paypalError,setPaypalError]=useState(false);
+  useEffect(()=>{let live=true;fetch("/api/admin/paypal",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error();if(live){setPaypal(d);setPaypalReady(true);}}).catch(()=>{if(live){setPaypalError(true);setPaypalMessage("No se pudo cargar PayPal.");}});return()=>{live=false};},[]);
+  async function savePaypal(e:React.FormEvent){
+    e.preventDefault();setPaypalBusy(true);setPaypalMessage("");setPaypalError(false);
+    try{const r=await fetch("/api/admin/paypal",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(paypal)});const d=await r.json();if(!r.ok)throw Error(d.error||"No se pudo guardar");setPaypal(d);setPaypalMessage("Configuración guardada correctamente.");}catch(e){setPaypalError(true);setPaypalMessage(e instanceof Error?e.message:"No se pudo guardar");}finally{setPaypalBusy(false);}
+  }
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
@@ -170,6 +180,16 @@ export default function AdminConfiguracionPage() {
             {([{key:"name",label:"Nombre fiscal o razón social",max:100},{key:"taxId",label:"NIF / CIF",max:40},{key:"address",label:"Domicilio fiscal completo",max:140}] as const).map(f=><label key={f.key} className="block text-xs text-slate-300 space-y-2"><span>{f.label}</span><input required maxLength={f.max} disabled={!issuerReady||issuerBusy} value={issuer[f.key]} onChange={e=>setIssuer(prev=>({...prev,[f.key]:e.target.value}))} className="w-full px-4 py-2.5 rounded-xl bg-[#111827] border border-slate-800 text-white disabled:opacity-50"/></label>)}
             <button type="submit" disabled={!issuerReady||issuerBusy} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50 flex items-center gap-2"><Save className="w-4 h-4"/>{issuerBusy?"Guardando…":"Guardar datos fiscales"}</button>
             {issuerMessage&&<p role="status" className={"text-xs "+(issuerError?"text-red-400":"text-emerald-400")}>{issuerMessage}</p>}
+          </form>
+          <form id="paypal" onSubmit={savePaypal} className="p-6 sm:p-8 rounded-3xl bg-[#0B1220] border border-slate-800 space-y-5">
+            <h2 className="text-base font-bold text-white">PayPal · Notificaciones IPN</h2>
+            <p className="text-xs text-slate-400">Pagos individuales en euros por bienes y servicios. No se realizan cargos recurrentes automáticos mediante IPN.</p>
+            <label className="flex gap-2 items-center text-sm text-slate-300"><input type="checkbox" disabled={!paypalReady||paypalBusy} checked={paypal.enabled} onChange={e=>setPaypal(p=>({...p,enabled:e.target.checked}))}/>Activar PayPal para nuevas compras</label>
+            <label className="block text-xs text-slate-300 space-y-2">Correo de la cuenta PayPal<input required type="email" maxLength={254} disabled={!paypalReady||paypalBusy} value={paypal.email} onChange={e=>setPaypal(p=>({...p,email:e.target.value}))} className="w-full px-4 py-2.5 rounded-xl bg-[#111827] border border-slate-800 text-white"/></label>
+            <label className="block text-xs text-slate-300 space-y-2">URL IPN (producción)<input readOnly value="https://www.axyon.es/api/webhooks/paypal" className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-slate-800 text-white"/></label>
+            <button type="button" onClick={async()=>{try{await navigator.clipboard.writeText("https://www.axyon.es/api/webhooks/paypal");setPaypalMessage("URL copiada.");setPaypalError(false);}catch{setPaypalMessage("Selecciona y copia la URL manualmente.");setPaypalError(true);}}} className="text-xs text-blue-400">Copiar URL IPN</button>
+            <button type="submit" disabled={!paypalReady||paypalBusy} className="block px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50">{paypalBusy?"Guardando…":"Guardar PayPal"}</button>
+            {paypalMessage&&<p role="status" className={"text-xs "+(paypalError?"text-red-400":"text-emerald-400")}>{paypalMessage}</p>}
           </form>
           {/* Security & Webhooks Status Box */}
           <div className="p-6 rounded-3xl bg-[#0B1220] border border-slate-800 space-y-4">
