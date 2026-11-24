@@ -9,25 +9,41 @@ import { DEFAULT_RULES } from "@/lib/integrations/discord-events";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const key = (id: string) => `integration:woocommerce:${id}`;
-const input = z.object({
-  storeName: z.string().trim().min(1).max(100),
-  discordWebhookUrl: z.string().url().refine(value => {
-    try {
-      const u = new URL(value);
-      return u.protocol === "https:" && ["discord.com", "discordapp.com"].includes(u.hostname) &&
-        /^\/api\/webhooks\/\d{17,22}\/[A-Za-z0-9_-]+\/?$/.test(u.pathname) &&
-        !u.username && !u.password && !u.search && !u.hash;
-    } catch { return false; }
-  }, "Debes indicar una URL de webhook oficial de Discord"),
-  enabled: z.boolean().default(true),
-  rules: z.array(z.object({
-    event: z.enum(["order.created", "order.updated", "order.deleted"]),
-    enabled: z.boolean(), title: z.string().trim().max(256).optional(),
-    minTotal: z.number().nonnegative().max(1e9).optional(),
-    statuses: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
-  })).max(3).optional(),
+const prefix = (botId: string) => `integration:woocommerce:${botId}`;
+const uuid = z.string().uuid();
+const eventRule = z.object({
+  event: z.enum(["order.created", "order.updated", "order.deleted"]),
+  enabled: z.boolean(),
+  title: z.string().trim().max(256).optional(),
+  minTotal: z.number().nonnegative().max(1e9).optional(),
+  statuses: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
 });
+const webhookUrl = z.string().url().refine(value => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && ["discord.com", "discordapp.com"].includes(url.hostname) &&
+      /^\/api\/webhooks\/\d{17,22}\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) &&
+      !url.username && !url.password && !url.search && !url.hash;
+  } catch { return false; }
+}, "Webhook de Discord inválido");
+const input = z.object({
+  integrationId: uuid.optional(),
+  storeName: z.string().trim().min(1).max(100),
+  discordWebhookUrl: webhookUrl.optional(),
+  enabled: z.boolean().default(true),
+  rotateSecret: z.boolean().optional(),
+  rules: z.array(eventRule).max(3).optional(),
+});
+type Stored = {
+  integrationId: string;
+  botId: string;
+  storeName: string;
+  enabled: boolean;
+  rules?: z.infer<typeof eventRule>[];
+  signingSecretEncrypted: string;
+  discordWebhookEncrypted: string;
+};
+
 async function authorize(id: string) {
   const user = await getCurrentUser();
   if (!user) return { error: NextResponse.json({ error: "Inicia sesión" }, { status: 401 }) };
@@ -42,47 +58,106 @@ async function authorize(id: string) {
   if (!bot) return { error: NextResponse.json({ error: "Instancia o suscripción no disponible" }, { status: 403 }) };
   return { bot, user };
 }
+
+async function listStores(botId: string) {
+  // Legacy key (one store per bot) and new per-store keys coexist.
+  const records = await prisma.setting.findMany({
+    where: { category: "WOOCOMMERCE_INTEGRATION", key: { startsWith: prefix(botId) } },
+    orderBy: { updatedAt: "desc" },
+  });
+  return records.flatMap(record => {
+    try {
+      const data = JSON.parse(record.value) as Stored;
+      if (data.botId !== botId || !uuid.safeParse(data.integrationId).success) return [];
+      return [{ key: record.key, data }];
+    } catch { return []; }
+  });
+}
+
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const access = await authorize(params.id);
   if (access.error) return access.error;
-  const setting = await prisma.setting.findUnique({ where: { key: key(params.id) } });
-  if (!setting) return NextResponse.json({ configured: false });
-  const data = JSON.parse(setting.value);
+  const stores = await listStores(params.id);
+  const publicStores = stores.map(({ data }) => ({
+    integrationId: data.integrationId,
+    storeName: data.storeName,
+    enabled: data.enabled,
+    rules: data.rules || DEFAULT_RULES,
+    webhookPath: `/api/integrations/woocommerce/${data.integrationId}`,
+    discordDestinationConfigured: Boolean(data.discordWebhookEncrypted),
+  }));
+  // Maintain compatibility with the original single-store UI/API.
+  const first = publicStores[0];
   return NextResponse.json({
-    configured: true, enabled: data.enabled, storeName: data.storeName,
-    webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/api/integrations/woocommerce/${data.integrationId}`,
-    discordDestinationConfigured: true, rules: data.rules || DEFAULT_RULES,
+    configured: stores.length > 0,
+    stores: publicStores,
+    ...(first ? {
+      integrationId: first.integrationId,
+      storeName: first.storeName,
+      enabled: first.enabled,
+      rules: first.rules,
+      webhookUrl: first.webhookPath,
+      discordDestinationConfigured: true,
+    } : {}),
   });
 }
+
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const access = await authorize(params.id);
   if (access.error) return access.error;
   const parsed = input.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Datos de integración inválidos", fields: parsed.error.flatten().fieldErrors }, { status: 400 });
-  const existing = await prisma.setting.findUnique({ where: { key: key(params.id) } });
-  const old = existing ? JSON.parse(existing.value) : null;
-  const secret = randomBytes(32).toString("hex");
-  const integrationId = old?.integrationId || randomUUID();
-  const record = {
-    integrationId, botId: params.id, storeName: parsed.data.storeName,
-    enabled: parsed.data.enabled, rules: parsed.data.rules || old?.rules || DEFAULT_RULES, discordWebhookEncrypted: encryptSecret(parsed.data.discordWebhookUrl),
-    signingSecretEncrypted: encryptSecret(secret),
+  if (!parsed.success) return NextResponse.json({
+    error: "Datos de integración inválidos", fields: parsed.error.flatten().fieldErrors,
+  }, { status: 400 });
+
+  const data = parsed.data;
+  const stores = await listStores(params.id);
+  const old = data.integrationId
+    ? stores.find(s => s.data.integrationId === data.integrationId)
+    : null;
+  if (data.integrationId && !old) return NextResponse.json({ error: "Tienda no encontrada en este bot" }, { status: 404 });
+  if (!old && stores.length >= 10) return NextResponse.json({ error: "Límite de 10 tiendas por bot alcanzado" }, { status: 409 });
+  if (!old && !data.discordWebhookUrl) return NextResponse.json({ error: "Introduce el webhook de Discord" }, { status: 400 });
+
+  const integrationId = old?.data.integrationId || randomUUID();
+  const secret = !old || data.rotateSecret ? randomBytes(32).toString("hex") : undefined;
+  const record: Stored = {
+    integrationId, botId: params.id,
+    storeName: data.storeName, enabled: data.enabled,
+    rules: data.rules || old?.data.rules || DEFAULT_RULES,
+    discordWebhookEncrypted: data.discordWebhookUrl
+      ? encryptSecret(data.discordWebhookUrl)
+      : old!.data.discordWebhookEncrypted,
+    signingSecretEncrypted: secret ? encryptSecret(secret) : old!.data.signingSecretEncrypted,
   };
+  const settingKey = old?.key || `${prefix(params.id)}:${integrationId}`;
   await prisma.setting.upsert({
-    where: { key: key(params.id) },
-    create: { key: key(params.id), category: "WOOCOMMERCE_INTEGRATION", value: JSON.stringify(record) },
+    where: { key: settingKey },
+    create: { key: settingKey, category: "WOOCOMMERCE_INTEGRATION", value: JSON.stringify(record) },
     update: { value: JSON.stringify(record) },
   });
   return NextResponse.json({
-    success: true,
+    success: true, integrationId,
     webhookPath: `/api/integrations/woocommerce/${integrationId}`,
-    signingSecret: secret,
-    message: "Guarda el secreto ahora: no volverá a mostrarse. Actualizar esta integración rota el secreto y debes cambiarlo en WooCommerce.",
+    ...(secret ? { signingSecret: secret } : {}),
+    message: secret
+      ? "Guarda el secreto ahora y configúralo en WooCommerce. Solo se muestra una vez."
+      : "Tienda actualizada sin cambiar el secreto de WooCommerce.",
   });
 }
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const access = await authorize(params.id);
   if (access.error) return access.error;
-  await prisma.setting.deleteMany({ where: { key: key(params.id) } });
+  const integrationId = new URL(request.url).searchParams.get("integrationId");
+  if (!integrationId || !uuid.safeParse(integrationId).success) {
+    return NextResponse.json({ error: "Indica qué tienda quieres eliminar" }, { status: 400 });
+  }
+  const stores = await listStores(params.id);
+  const store = stores.find(s => s.data.integrationId === integrationId);
+  if (!store) return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
+  // Remove delivery history first via the tenant-specific integration ID, then configuration.
+  // Do not remove queued records: the worker will mark undeliverable events FAILED.
+  await prisma.setting.delete({ where: { key: store.key } });
   return NextResponse.json({ success: true });
 }
