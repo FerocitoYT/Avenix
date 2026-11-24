@@ -1,5 +1,5 @@
 -- Axyon Control / Axyon Bot: durable integration deliveries.
--- Additive and idempotent migration; apply to the shared Neon database.
+-- Additive and idempotent migration to the shared Neon database.
 CREATE TABLE IF NOT EXISTS "IntegrationDelivery" (
   "id" TEXT NOT NULL,
   "botId" TEXT NOT NULL,
