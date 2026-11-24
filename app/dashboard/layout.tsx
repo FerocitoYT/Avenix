@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AvenixLogo } from "@/components/brand/logo";
+import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
 import {
   LayoutDashboard,
   Bot,
@@ -20,6 +21,15 @@ import {
   Layers,
   ChevronRight,
   Sparkles,
+  Settings,
+  Ticket,
+  Shield,
+  UserCheck,
+  Palette,
+  Workflow,
+  ShoppingBag,
+  History,
+  Activity,
 } from "lucide-react";
 
 interface DashboardUser {
@@ -40,6 +50,7 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<DashboardUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeBots, setActiveBots] = useState<Array<{id:string;name:string;guildId:string|null}>>([]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -59,11 +70,42 @@ export default function DashboardLayout({
       .finally(() => setLoading(false));
   }, [router]);
 
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/client/bot-config", { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!mounted || !data) return;
+        const bots = (data.services || [])
+          .filter((service: any) => service.subscriptionActive && service.bot?.id)
+          .map((service: any) => ({ id: service.bot.id, name: service.name, guildId: service.bot.guildId || null }));
+        setActiveBots(bots);
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [pathname]);
+
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
     router.refresh();
   };
+
+  const botModules = orderedBotDashboardModules();
+  const botModuleIcons: Record<string, React.ComponentType<{className?:string}>> = {
+    settings: Settings,
+    ticket: Ticket,
+    shield: Shield,
+    "user-check": UserCheck,
+    palette: Palette,
+    workflow: Workflow,
+    "shopping-bag": ShoppingBag,
+    history: History,
+    activity: Activity,
+    "layout-dashboard": LayoutDashboard,
+  };
+  const currentBotId = pathname.match(/^\/dashboard\/bot\/([^/]+)/)?.[1] || null;
+  const currentBot = currentBotId ? activeBots.find(bot => bot.id === currentBotId) : null;
 
   const navItems = [
     { label: "Visión General", href: "/dashboard", icon: LayoutDashboard },
@@ -100,24 +142,54 @@ export default function DashboardLayout({
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
+              const isBotNav = item.href === "/dashboard/bots";
               const isActive =
                 item.href === "/dashboard"
                   ? pathname === "/dashboard"
-                  : pathname.startsWith(item.href);
+                  : isBotNav
+                    ? pathname.startsWith("/dashboard/bots") || pathname.startsWith("/dashboard/bot/")
+                    : pathname.startsWith(item.href);
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
+                <React.Fragment key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                  {isBotNav && activeBots.length > 0 && (
+                    <div className="ml-4 mt-1 space-y-1 border-l border-slate-800 pl-3">
+                      {activeBots.map(bot => (
+                        <div key={bot.id}>
+                          <Link href={`/dashboard/bot/${bot.id}`} className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[11px] transition-colors ${currentBotId === bot.id ? "bg-slate-800 text-white" : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"}`}>
+                            <Bot className="w-3.5 h-3.5"/>
+                            <span className="truncate">{bot.name}</span>
+                          </Link>
+                          {currentBotId === bot.id && (
+                            <div className="ml-3 mt-1 space-y-0.5">
+                              {botModules.map(module => {
+                                const ModuleIcon = botModuleIcons[module.icon] || Settings;
+                                const disabled = module.requiresGuild && !bot.guildId;
+                                return disabled ? null : (
+                                  <Link key={module.key} href={module.href(bot.id, bot.guildId)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[10px] text-slate-500 hover:bg-slate-800/70 hover:text-slate-200">
+                                    <ModuleIcon className="w-3 h-3"/>
+                                    <span>{module.shortLabel}</span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
               );
             })}
           </nav>
@@ -179,24 +251,30 @@ export default function DashboardLayout({
             <nav className="space-y-1.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isBotNav = item.href === "/dashboard/bots";
+                const isActive = item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : isBotNav
+                    ? pathname.startsWith("/dashboard/bots") || pathname.startsWith("/dashboard/bot/")
+                    : pathname.startsWith(item.href);
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center justify-between p-3 rounded-xl text-sm font-semibold ${
-                      isActive
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-300 hover:bg-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-500" />
-                  </Link>
+                  <React.Fragment key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center justify-between p-3 rounded-xl text-sm font-semibold ${
+                        isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3"><Icon className="w-4 h-4" /><span>{item.label}</span></div>
+                      <ChevronRight className="w-4 h-4 text-slate-500" />
+                    </Link>
+                    {isBotNav && activeBots.map(bot => (
+                      <Link key={bot.id} href={`/dashboard/bot/${bot.id}`} onClick={() => setMobileOpen(false)} className="ml-5 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 hover:bg-slate-800">
+                        <Bot className="w-3.5 h-3.5"/><span>{bot.name}</span>
+                      </Link>
+                    ))}
+                  </React.Fragment>
                 );
               })}
             </nav>
