@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AvenixLogo } from "@/components/brand/logo";
 import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
@@ -38,6 +39,9 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
     searchParams.get("section") || "overview";
   const [bot, setBot] = useState<BotInfo|null>(null);
   const [mobileOpen,setMobileOpen] = useState(false);
+  const [search,setSearch]=useState("");
+  useEffect(()=>{if(!mobileOpen)return;const old=document.body.style.overflow;document.body.style.overflow="hidden";const close=(e:KeyboardEvent)=>{if(e.key==="Escape")setMobileOpen(false)};window.addEventListener("keydown",close);return()=>{document.body.style.overflow=old;window.removeEventListener("keydown",close)}},[mobileOpen]);
+  useEffect(()=>{setMobileOpen(false);setSearch("");},[pathname,section,botId]);
   const modules = useMemo(()=>orderedBotDashboardModules(),[]);
   const groups = [
     {title:"General",keys:["overview","credentials"],icon:LayoutDashboard},
@@ -66,22 +70,22 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
       const disabled=module.requiresGuild&&!bot?.guildId;
       const active=section===module.key;
       return disabled ? (
-        <div key={module.key} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-slate-600 cursor-not-allowed">
+        <div key={module.key} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-500 cursor-not-allowed">
           <Icon className="w-4 h-4"/><span>{module.shortLabel}</span>
         </div>
       ) : (
         <Link key={module.key} href={routeFor(module.key)} onClick={()=>setMobileOpen(false)}
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${active?"bg-blue-600 text-white shadow-md shadow-blue-500/20":"text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}>
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-all ${active?"bg-blue-600 text-white shadow-md shadow-blue-500/20":"text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}>
           <Icon className="w-4 h-4"/><span>{module.shortLabel}</span>
         </Link>
       );
     };
   const remaining=modules.filter(m=>!groups.some(g=>g.keys.includes(m.key)));
-  const nav = <nav aria-label="Gestión del bot" className="space-y-2">
+  const nav = (mobile=false) => <nav aria-label="Gestión del bot" className="space-y-2">
     {[...groups,...(remaining.length?[{title:"Otros módulos",keys:remaining.map(m=>m.key),icon:Settings}]:[])].map(group=>{
-      const items=modules.filter(m=>group.keys.includes(m.key));
+      const items=modules.filter(m=>group.keys.includes(m.key)&&(!mobile||!search.trim()||(m.label+" "+m.shortLabel+" "+group.title).toLowerCase().includes(search.trim().toLowerCase())));
       if(!items.length)return null;
-      const open=expanded[group.title]??items.some(m=>m.key===section);
+      const open=(mobile&&!!search.trim())||(expanded[group.title]??items.some(m=>m.key===section));
       const active=items.some(m=>m.key===section);
       const GroupIcon=group.icon;
       return <div key={group.title} className="rounded-xl border border-slate-800/80 bg-[#101a2a] overflow-hidden">
@@ -103,7 +107,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
           <div className="min-w-0"><p className="text-sm font-bold text-white truncate">{bot?.name||"Cargando bot…"}</p><p className="text-[10px] text-slate-500 font-mono truncate">{botId}</p></div>
         </div>
       </div>
-      <div className="flex-1 min-h-0 py-4 overflow-y-auto">{nav}</div>
+      <div className="flex-1 min-h-0 py-4 overflow-y-auto">{nav()}</div>
       <div className="pt-4 border-t border-slate-800">
         <Link href="/dashboard/bots" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-white">
           <ArrowLeft className="w-4 h-4"/><span>Volver al panel de cliente</span>
@@ -114,13 +118,20 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
     <div className="flex-1 min-w-0">
       <header className="lg:hidden sticky top-0 z-40 flex items-center justify-between border-b border-slate-800 bg-[#0b1322] px-4 py-3">
         <div className="flex items-center gap-3"><AvenixLogo size="sm"/><span className="text-xs text-slate-400">Bot Manager</span></div>
-        <button onClick={()=>setMobileOpen(true)} className="p-2 text-slate-300"><Menu className="w-5 h-5"/></button>
+        <button onClick={()=>{setSearch("");setMobileOpen(true)}} aria-label="Abrir menú de módulos" aria-expanded={mobileOpen} className="flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-slate-300"><Menu className="w-5 h-5"/><span className="text-xs">Módulos</span></button>
       </header>
-      {mobileOpen&&<div className="lg:hidden fixed inset-0 z-50 bg-[#0b1322] flex flex-col p-4 overflow-hidden">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800"><div><p className="text-xs font-bold text-white">{bot?.name||"Bot"}</p><p className="text-[10px] text-slate-500">{botId}</p></div><button onClick={()=>setMobileOpen(false)} className="p-2"><X className="w-5 h-5"/></button></div>
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-4">{nav}</div>
-        <Link href="/dashboard/bots" onClick={()=>setMobileOpen(false)} className="shrink-0 flex items-center gap-2 rounded-xl border border-slate-800 px-3 py-3 mb-[env(safe-area-inset-bottom)] text-xs text-slate-300"><ArrowLeft className="w-4 h-4"/>Volver al panel de cliente</Link>
-      </div>}
+      {mobileOpen&&typeof document!=="undefined"&&createPortal(
+        <div role="dialog" aria-modal="true" aria-label="Menú del bot" className="lg:hidden fixed inset-0 z-[100] bg-[#0b1322] flex flex-col text-slate-200 overflow-hidden" style={{height:"100dvh",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)"}}>
+          <div className="shrink-0 px-4 pt-3 pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-xs uppercase tracking-wide text-blue-400">Axyon Bot Manager</p><p className="text-base font-bold break-words">{bot?.name||"Bot"}</p></div><button type="button" aria-label="Cerrar menú" onClick={()=>setMobileOpen(false)} className="shrink-0 rounded-xl border border-slate-700 p-3"><X className="w-5 h-5"/></button></div>
+            <input aria-label="Buscar módulo" placeholder="Buscar módulo…" value={search} onChange={e=>setSearch(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-700 bg-[#070d18] px-4 py-3 text-base outline-none focus:border-blue-500"/>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3" style={{WebkitOverflowScrolling:"touch"}}>
+            {nav(true)}
+            {search.trim()&&!modules.some(m=>(m.label+" "+m.shortLabel+" "+(groups.find(g=>g.keys.includes(m.key))?.title||"")).toLowerCase().includes(search.trim().toLowerCase()))&&<p className="p-4 text-sm text-slate-400">No se encontraron módulos.</p>}
+          </div>
+          <div className="shrink-0 border-t border-slate-800 px-4 py-3 bg-[#0b1322]"><Link href="/dashboard/bots" onClick={()=>setMobileOpen(false)} className="flex items-center gap-3 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300"><ArrowLeft className="w-4 h-4 shrink-0"/>Volver al panel de cliente</Link></div>
+        </div>,document.body)}
       <main className="min-h-screen overflow-y-auto">{children}</main>
     </div>
   </div>;
