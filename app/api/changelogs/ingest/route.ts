@@ -7,7 +7,7 @@ export const dynamic="force-dynamic";
 const issuer="https://token.actions.githubusercontent.com";
 const audience="https://axyon.es/api/changelogs/ingest";
 const repos=["FerocitoYT/Avenix","FerocitoYT/Axyon-Bot"];
-const schema=z.object({sha:z.string().regex(/^[a-f0-9]{40}$/),important:z.boolean(),areas:z.array(z.enum(Object.keys(categories) as [keyof typeof categories,...(keyof typeof categories)[]])).min(1).max(16),date:z.string().datetime(),notes:z.object({es:z.array(z.string().max(400)).max(12),en:z.array(z.string().max(400)).max(12)}).optional()}).strict();
+const schema=z.object({audience:z.literal("customer"),sha:z.string().regex(/^[a-f0-9]{40}$/),important:z.boolean(),areas:z.array(z.enum(Object.keys(categories) as [keyof typeof categories,...(keyof typeof categories)[]])).min(1).max(16),date:z.string().datetime(),notes:z.object({es:z.array(z.string().trim().min(1).max(400)).min(1).max(12),en:z.array(z.string().trim().min(1).max(400)).min(1).max(12)})}).strict();
 async function identity(req:Request){
  const token=req.headers.get("authorization")?.replace(/^Bearer /,"")||"";
  if(token.length>20000)return null;
