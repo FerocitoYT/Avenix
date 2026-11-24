@@ -465,6 +465,9 @@ model BotInstance {
   configuration    BotConfiguration?
 
   integrationDeliveries IntegrationDelivery[]
+  deliverySources       DeliverySource[]
+  fulfillmentOrders     FulfillmentOrder[]
+  productDeliveryMaps   ProductDeliveryMap[]
 
   @@index([serviceId])
   @@index([status])
@@ -1153,4 +1156,114 @@ model IntegrationDelivery {
   @@unique([integrationId, eventId])
   @@index([status, nextAttemptAt])
   @@index([botId, createdAt])
+}
+
+
+/// Delivery/fulfillment source owned by one hosted bot.
+/// Sensitive provider credentials are stored AES-256-GCM encrypted in configEncrypted.
+model DeliverySource {
+  id              String   @id @default(cuid())
+  botId           String
+  name            String
+  type            String
+  enabled         Boolean  @default(true)
+  configEncrypted String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bot             BotInstance @relation(fields: [botId], references: [id], onDelete: Cascade)
+  productMaps     ProductDeliveryMap[]
+  stockItems      InternalStockItem[]
+  fulfillmentItems FulfillmentItem[]
+
+  @@index([botId, enabled])
+  @@index([botId, type])
+}
+
+/// Maps a commerce product/SKU to the delivery source that can fulfill it.
+model ProductDeliveryMap {
+  id                  String   @id @default(cuid())
+  botId               String
+  sourceId            String
+  provider             String
+  externalProductId   String
+  externalVariationId String?
+  sku                 String?
+  remoteProductId     String?
+  quantityPerUnit     Int      @default(1)
+  deliveryMode        String   @default("DM")
+  enabled             Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  bot                 BotInstance   @relation(fields: [botId], references: [id], onDelete: Cascade)
+  source              DeliverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, provider, externalProductId, externalVariationId])
+  @@index([botId, enabled])
+  @@index([sourceId])
+}
+
+/// One paid commerce order being fulfilled through Discord.
+model FulfillmentOrder {
+  id                    String   @id @default(cuid())
+  botId                 String
+  integrationDeliveryId String?  @unique
+  provider              String
+  externalOrderId       String
+  customerDiscordId     String?
+  status                String   @default("PENDING")
+  lastError             String?  @db.Text
+  deliveredAt           DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  bot                   BotInstance @relation(fields: [botId], references: [id], onDelete: Cascade)
+  items                 FulfillmentItem[]
+
+  @@unique([botId, provider, externalOrderId])
+  @@index([botId, status, createdAt])
+}
+
+/// Individual line item in a fulfillment order.
+model FulfillmentItem {
+  id                 String   @id @default(cuid())
+  fulfillmentOrderId String
+  sourceId           String?
+  externalProductId  String
+  externalVariationId String?
+  productName        String
+  quantity           Int
+  status             String   @default("PENDING")
+  deliveredEncrypted String?  @db.Text
+  lastError          String?  @db.Text
+  deliveredAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  fulfillmentOrder   FulfillmentOrder @relation(fields: [fulfillmentOrderId], references: [id], onDelete: Cascade)
+  source             DeliverySource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  stockItems         InternalStockItem[]
+
+  @@index([fulfillmentOrderId, status])
+  @@index([sourceId])
+}
+
+/// Encrypted inventory unit used by an INTERNAL delivery source.
+model InternalStockItem {
+  id                String   @id @default(cuid())
+  sourceId          String
+  productKey        String
+  secretEncrypted   String   @db.Text
+  status            String   @default("AVAILABLE")
+  reservationKey    String?
+  fulfillmentItemId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  source            DeliverySource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  fulfillmentItem   FulfillmentItem? @relation(fields: [fulfillmentItemId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId, productKey, status])
+  @@index([reservationKey])
 }
