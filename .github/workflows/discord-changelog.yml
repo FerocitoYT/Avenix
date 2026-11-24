@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   discord-changelog:
@@ -24,15 +25,11 @@ jobs:
           node-version: '22'
       - name: Validar generador
         run: node --check .github/scripts/discord-changelog.mjs
-      - name: Comprobar secreto de Discord
-        shell: bash
+      - name: Publicar historial web
+        run: node .github/scripts/publish-changelog.mjs
         env:
-          DISCORD_CHANGELOG_WEBHOOK: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
-        run: |
-          if [ -z "$DISCORD_CHANGELOG_WEBHOOK" ]; then
-            echo "::error::Falta el secreto DISCORD_CHANGELOG_WEBHOOK en Settings → Secrets and variables → Actions."
-            exit 1
-          fi
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_SHA: ${{ github.sha }}
       - name: Enviar embed a Discord
         run: node .github/scripts/discord-changelog.mjs
         env:
