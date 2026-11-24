@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AvenixLogo } from "@/components/brand/logo";
 import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
 import { BotManagerShell } from "@/components/dashboard/bot-manager-shell";
@@ -47,6 +47,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<DashboardUser | null>(null);
@@ -131,8 +132,21 @@ export default function DashboardLayout({
     );
   }
 
-  if (pathname.startsWith("/dashboard/bot/")) {
-    return <BotManagerShell>{children}</BotManagerShell>;
+  const legacyBotEditorPaths = [
+    "/dashboard/bots/configuracion",
+    "/dashboard/bots/editor",
+    "/dashboard/bots/tickets",
+    "/dashboard/bots/integraciones",
+    "/dashboard/bots/integraciones/historial",
+    "/dashboard/bots/diagnostico",
+  ];
+  const editorBotId = searchParams.get("botId");
+  const useBotManagerShell =
+    pathname.startsWith("/dashboard/bot/") ||
+    (Boolean(editorBotId) && legacyBotEditorPaths.some(path => pathname === path || pathname.startsWith(path + "/")));
+
+  if (useBotManagerShell) {
+    return <BotManagerShell botIdOverride={editorBotId || undefined}>{children}</BotManagerShell>;
   }
 
   return (
