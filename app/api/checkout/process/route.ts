@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, signToken } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { OFFICIAL_CATALOG } from "@/lib/catalog";
 import { stripe } from "@/lib/stripe";
 
@@ -25,40 +25,9 @@ export async function POST(req: Request) {
     const email = validated.customerEmail.toLowerCase().trim();
 
     // 1. Identify or create User
-    let currentUser = await getCurrentUser();
-    let token = "";
-
-    if (!currentUser) {
-      let existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (!existingUser) {
-        existingUser = await prisma.user.create({
-          data: {
-            name: validated.customerName,
-            email,
-            companyName: validated.companyName || null,
-            taxId: validated.taxId || null,
-            role: "CLIENT",
-            isActive: true,
-          },
-        });
-      }
-
-      currentUser = {
-        id: existingUser.id,
-        email: existingUser.email,
-        name: existingUser.name,
-        role: existingUser.role,
-        discordId: existingUser.discordId,
-        discordUsername: existingUser.discordUsername,
-        companyName: existingUser.companyName,
-      };
-
-      token = signToken(currentUser);
-    }
-
+    const currentUser=await getCurrentUser();
+    if(!currentUser)return NextResponse.json({error:"Inicia sesión o crea una cuenta antes de contratar."},{status:401});
+    if(currentUser.email.toLowerCase()!==email)return NextResponse.json({error:"El correo debe coincidir con tu cuenta."},{status:400});
     // 2. Identify Product & Price
     let selectedPrice: any = null;
     let selectedProduct: any = null;
@@ -203,15 +172,7 @@ export async function POST(req: Request) {
         redirectUrl: session.url,
       });
 
-      if (token) {
-        response.cookies.set("avenix_session_token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7,
-        });
-      }
+
 
       return response;
     }
@@ -258,15 +219,7 @@ export async function POST(req: Request) {
         redirectUrl: paypalUrl,
       });
 
-      if (token) {
-        response.cookies.set("avenix_session_token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7,
-        });
-      }
+
 
       return response;
     }
