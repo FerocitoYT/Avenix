@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export async function authorizeGuild(guildId: string) {
  const user = await getCurrentUser();
  if (!user) return { ok: false as const, status: 401, error: "Inicia sesión" };
- if(user.role!=="ADMIN"&&(await maintenanceState()).mode!=="OFF")return {ok:false as const,status:503,error:"Panel en mantenimiento"};
+ if((await maintenanceState()).mode!=="OFF")return {ok:false as const,status:503,error:"Panel en mantenimiento"};
  if (user.role === "ADMIN") {
   const guild = await prisma.guild.findUnique({ where: { id: guildId }, select: { id: true } });
   return guild ? { ok: true as const, user } : { ok: false as const, status: 404, error: "Servidor no encontrado" };
