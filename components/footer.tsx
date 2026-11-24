@@ -1,3 +1,4 @@
+import {CookieSettingsLink} from "@/components/cookie-notice";
 import React from "react";
 import Link from "next/link";
 import { AvenixLogo } from "./brand/logo";
@@ -190,6 +191,7 @@ export function Footer() {
                   Términos de Servicio
                 </Link>
               </li>
+              <li><CookieSettingsLink /></li>
               <li className="pt-2 text-xs text-slate-500">
                 <span className="block text-slate-400 font-medium">Contacto directo:</span>
                 <a
