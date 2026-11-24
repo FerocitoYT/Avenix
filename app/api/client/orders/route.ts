@@ -40,13 +40,20 @@ export async function GET() {
     }),
   ]);
 
-  const normalizedOrders = orders.map(order => ({
+  const normalizedOrders = orders.map(order => {
+    const readyMadeBot = order.services.some(service =>
+      service.serviceType === "DISCORD_BOT" &&
+      Boolean(service.subscriptions[0]) &&
+      ["mensual", "anual", "avenix bot mensual", "avenix bot anual"].includes(service.planName.toLowerCase())
+    );
+    return {
     id: order.id,
     orderNumber: order.orderNumber,
     productName: order.items[0]?.productName || order.items[0]?.product?.name || order.services[0]?.name || "Servicio Axyon",
     totalAmountCents: order.totalAmountCents,
     currency: order.currency,
-    status: order.status,
+    status: readyMadeBot && order.status === "ACCEPTED" ? "COMPLETED" : order.status,
+    instantDelivery: readyMadeBot,
     createdAt: order.createdAt,
     deliveryEstimatedDate: order.deliveryDate,
     notes: order.notes,
@@ -60,7 +67,8 @@ export async function GET() {
       renewalDate: service.renewalDate,
       subscription: service.subscriptions[0] ?? null,
     })),
-  }));
+  };
+  });
 
   const syntheticOrders = orphanServices.map(service => {
     const sub = service.subscriptions[0] ?? null;
@@ -71,7 +79,8 @@ export async function GET() {
       productName: service.name,
       totalAmountCents: service.monthlyCostCents,
       currency: "EUR",
-      status: active ? "ACCEPTED" : "COMPLETED",
+      status: "COMPLETED",
+      instantDelivery: service.serviceType === "DISCORD_BOT" && Boolean(sub),
       createdAt: service.createdAt,
       deliveryEstimatedDate: service.renewalDate,
       notes: active ? `Servicio contratado · ${service.planName}` : `Servicio no vigente · ${service.planName}`,
