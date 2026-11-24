@@ -24,6 +24,10 @@ const ORDER_STEPS = [
   { key: "IN_REVIEW", label: "Revisión" },
   { key: "COMPLETED", label: "Completado" },
 ];
+const INSTANT_STEPS = [
+  { key: "ACCEPTED", label: "Aceptado" },
+  { key: "COMPLETED", label: "Completado" },
+];
 
 export default function MisPedidosPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -48,7 +52,12 @@ export default function MisPedidosPage() {
     return () => { active = false; };
   }, []);
 
-  const getStepProgress = (status: OrderStatus) => {
+  const getStepProgress = (status: OrderStatus, instantDelivery = false) => {
+    if (instantDelivery) {
+      if (status === "COMPLETED") return 100;
+      if (status === "ACCEPTED") return 50;
+      return 0;
+    }
     switch (status) {
       case "PENDING":
         return 10;
@@ -135,7 +144,8 @@ export default function MisPedidosPage() {
       ) : orders.length > 0 ? (
         <div className="space-y-6">
           {orders.map((order) => {
-            const progress = getStepProgress(order.status);
+            const progress = getStepProgress(order.status, Boolean(order.instantDelivery));
+            const steps = order.instantDelivery ? INSTANT_STEPS : ORDER_STEPS;
 
             return (
               <div
@@ -178,19 +188,18 @@ export default function MisPedidosPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-5 text-[10px] text-slate-400 pt-1 text-center font-medium">
-                    {ORDER_STEPS.map((s, idx) => (
-                      <div
-                        key={s.key}
-                        className={
-                          progress >= ((idx + 1) / 5) * 100 - 10
-                            ? "text-blue-400 font-bold"
-                            : ""
-                        }
-                      >
-                        {s.label}
-                      </div>
-                    ))}
+                  <div className={`grid text-[10px] text-slate-400 pt-1 text-center font-medium ${order.instantDelivery ? "grid-cols-2" : "grid-cols-5"}`}>
+                    {steps.map((s, idx) => {
+                      const threshold = ((idx + 1) / steps.length) * 100;
+                      return (
+                        <div
+                          key={s.key}
+                          className={progress >= threshold ? "text-blue-400 font-bold" : ""}
+                        >
+                          {s.label}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -204,7 +213,7 @@ export default function MisPedidosPage() {
                   <div>
                     <span className="text-slate-500 block mb-0.5">Fecha estimada de entrega:</span>
                     <span className="text-white font-semibold">
-                      {formatDate(order.deliveryEstimatedDate)}
+                      {order.instantDelivery ? "Entrega inmediata" : formatDate(order.deliveryEstimatedDate)}
                     </span>
                   </div>
 
