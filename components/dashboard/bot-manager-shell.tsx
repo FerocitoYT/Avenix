@@ -49,7 +49,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
     {title:"Personal",keys:["absences","recruitment","employees"],icon:ClipboardList},
     {title:"Automatización",keys:["automations","scheduled-messages","events","reminders","ai"],icon:Workflow},
     {title:"Integraciones",keys:["integrations","social","deliveries"],icon:ShoppingBag},
-    {title:"Seguridad y sistema",keys:["security","analytics","logs","diagnostics"],icon:Shield}
+    {title:"Seguridad y sistema",keys:["security","analytics","logs","performance","diagnostics"],icon:Shield}
   ];
   const [expanded,setExpanded]=useState<Record<string,boolean>>({});
   useEffect(()=>{const group=groups.find(g=>g.keys.includes(section));if(group)setExpanded(prev=>({...prev,[group.title]:true}));},[section]);
