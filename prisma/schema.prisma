@@ -479,6 +479,7 @@ model BotConfiguration {
   id             String      @id @default(cuid())
   botInstanceId  String      @unique
   tokenSecretRef String?     // Referencia cifrada o ID de secreto
+  oauthClientSecretRef String?
   prefix         String      @default("!")
   embedColorHex  String      @default("#3B82F6")
   modulesEnabled String[]    @default(["moderation", "tickets", "utility"])
@@ -902,6 +903,8 @@ model VerificationConfig {
   embedDescription  String   @default("Reacciona o pulsa el botón para verificar tu cuenta.")
   buttonLabel       String   @default("Verificar cuenta")
   targetInviteUrl   String?
+  targetGuildId      String?
+  requireGuildJoin   Boolean  @default(true)
   dmAfterVerify     Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -915,13 +918,42 @@ model VerificationRecord {
   id          String   @id @default(cuid())
   guildId     String
   discordUserId String
+  discordUsername String?
+  discordAvatar String?
   method      String
+  accessTokenEncrypted String? @db.Text
+  refreshTokenEncrypted String? @db.Text
+  tokenExpiresAt DateTime?
+  scopes      String[] @default([])
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
   verifiedAt  DateTime @default(now())
 
   guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
 
   @@unique([guildId, discordUserId])
   @@index([guildId, verifiedAt])
+}
+
+model MemberRestoreJob {
+  id             String   @id @default(cuid())
+  botInstanceId  String
+  sourceGuildId  String
+  targetGuildId  String
+  status         String   @default("PENDING")
+  total          Int      @default(0)
+  processed      Int      @default(0)
+  added          Int      @default(0)
+  skipped        Int      @default(0)
+  failed         Int      @default(0)
+  lastError      String?  @db.Text
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([botInstanceId, status, createdAt])
+  @@index([sourceGuildId, createdAt])
 }
 
 model AutoRole {

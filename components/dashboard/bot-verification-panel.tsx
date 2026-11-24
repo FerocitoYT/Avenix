@@ -1,163 +1,26 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { CheckCircle2, Save, ShieldCheck } from "lucide-react";
-
-type VerificationConfig = {
-  enabled: boolean;
-  mode: "REACTION" | "ACCOUNT";
-  channelId: string;
-  messageId?: string | null;
-  verifiedRoleId: string;
-  reactionEmoji: string;
-  embedTitle: string;
-  embedDescription: string;
-  buttonLabel: string;
-  targetInviteUrl: string;
-  dmAfterVerify: boolean;
-};
-
-const defaults: VerificationConfig = {
-  enabled: false,
-  mode: "REACTION",
-  channelId: "",
-  verifiedRoleId: "",
-  reactionEmoji: "✅",
-  embedTitle: "Verificación",
-  embedDescription: "Reacciona o pulsa el botón para verificar tu cuenta.",
-  buttonLabel: "Verificar cuenta",
-  targetInviteUrl: "",
-  dmAfterVerify: true,
-};
-
-export function BotVerificationPanel({ guildId }: { guildId: string }) {
-  const [config,setConfig]=useState<VerificationConfig>(defaults);
-  const [verifiedCount,setVerifiedCount]=useState(0);
-  const [loading,setLoading]=useState(true);
-  const [saving,setSaving]=useState(false);
-  const [error,setError]=useState("");
-  const [message,setMessage]=useState("");
-
-  useEffect(()=>{
-    let active=true;
-    const load=async()=>{
-      setLoading(true);
-      try{
-        const response=await fetch(`/api/bot/guilds/${guildId}/verification`,{cache:"no-store"});
-        const data=await response.json();
-        if(!response.ok) throw new Error(data.error||"No se pudo cargar la verificación");
-        if(active){
-          setConfig({...defaults,...data.config,targetInviteUrl:data.config?.targetInviteUrl||""});
-          setVerifiedCount(data.verifiedCount||0);
-          setError("");
-        }
-      }catch(e){
-        if(active)setError(e instanceof Error?e.message:"Error cargando la configuración");
-      }finally{if(active)setLoading(false)}
-    };
-    void load();
-    return()=>{active=false};
-  },[guildId]);
-
-  async function save(){
-    setSaving(true);setError("");setMessage("");
-    try{
-      const response=await fetch(`/api/bot/guilds/${guildId}/verification`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({action:"SAVE",config}),
-      });
-      const data=await response.json();
-      if(!response.ok){
-        const details=data.fields&&typeof data.fields==="object"
-          ? Object.values(data.fields as Record<string,string[]>).flat().filter(Boolean).join(". ")
-          : "";
-        throw new Error(details||data.error||"No se pudo guardar");
-      }
-      setConfig(prev=>({...prev,...data.config,targetInviteUrl:data.config?.targetInviteUrl||""}));
-      setMessage("Configuración de verificación guardada correctamente.");
-    }catch(e){
-      setError(e instanceof Error?e.message:"Error guardando verificación");
-    }finally{setSaving(false)}
-  }
-
-  if(loading)return <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 text-sm text-slate-400">Cargando sistema de verificación…</div>;
-
-  return <div className="space-y-5">
-    <div className="grid sm:grid-cols-3 gap-4">
-      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5">
-        <p className="text-xs text-slate-500">Estado</p>
-        <p className={`mt-2 font-bold ${config.enabled?"text-emerald-300":"text-slate-300"}`}>{config.enabled?"Activo":"Desactivado"}</p>
-      </div>
-      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5">
-        <p className="text-xs text-slate-500">Modo</p>
-        <p className="mt-2 font-bold text-white">{config.mode==="REACTION"?"Reacción de emoji":"Cuenta / botón"}</p>
-      </div>
-      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5">
-        <p className="text-xs text-slate-500">Usuarios verificados</p>
-        <p className="mt-2 text-2xl font-extrabold text-white">{verifiedCount}</p>
-      </div>
-    </div>
-
-    {error&&<div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>}
-    {message&&<div className="flex items-center gap-2 rounded-xl border border-emerald-800 bg-emerald-950/30 p-4 text-sm text-emerald-300"><CheckCircle2 className="w-4 h-4"/>{message}</div>}
-
-    <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-5">
-      <div className="flex items-start justify-between gap-5">
-        <div>
-          <h3 className="font-bold text-white">Sistema de verificación</h3>
-          <p className="mt-1 text-xs text-slate-400">Verifica usuarios en este servidor y, opcionalmente, envíalos a un segundo servidor mediante una invitación privada.</p>
-        </div>
-        <button type="button" onClick={()=>setConfig(prev=>({...prev,enabled:!prev.enabled}))} className={`relative h-7 w-12 rounded-full transition-colors ${config.enabled?"bg-blue-600":"bg-slate-700"}`}>
-          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${config.enabled?"left-6":"left-1"}`}/>
-        </button>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <label className="text-sm text-slate-300">Método de verificación
-          <select value={config.mode} onChange={e=>setConfig({...config,mode:e.target.value as "REACTION"|"ACCOUNT"})} className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3">
-            <option value="REACTION">Reacción de emoji en embed</option>
-            <option value="ACCOUNT">Verificación por cuenta / botón</option>
-          </select>
-        </label>
-        <label className="text-sm text-slate-300">ID del canal
-          <input value={config.channelId} onChange={e=>setConfig({...config,channelId:e.target.value})} placeholder="123456789012345678" className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono"/>
-        </label>
-        <label className="text-sm text-slate-300">ID del rol verificado
-          <input value={config.verifiedRoleId} onChange={e=>setConfig({...config,verifiedRoleId:e.target.value})} placeholder="123456789012345678" className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono"/>
-        </label>
-        {config.mode==="REACTION"?<label className="text-sm text-slate-300">Emoji de verificación
-          <input value={config.reactionEmoji} onChange={e=>setConfig({...config,reactionEmoji:e.target.value})} placeholder="✅" className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/>
-        </label>:<label className="text-sm text-slate-300">Texto del botón
-          <input value={config.buttonLabel} onChange={e=>setConfig({...config,buttonLabel:e.target.value})} maxLength={80} className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/>
-        </label>}
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <label className="text-sm text-slate-300">Título del embed
-          <input value={config.embedTitle} onChange={e=>setConfig({...config,embedTitle:e.target.value})} maxLength={256} className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/>
-        </label>
-        <label className="text-sm text-slate-300">Invitación al servidor destino
-          <input value={config.targetInviteUrl} onChange={e=>setConfig({...config,targetInviteUrl:e.target.value})} placeholder="https://discord.gg/..." className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/>
-        </label>
-      </div>
-
-      <label className="block text-sm text-slate-300">Descripción del embed
-        <textarea rows={5} value={config.embedDescription} onChange={e=>setConfig({...config,embedDescription:e.target.value})} maxLength={2000} className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/>
-      </label>
-
-      <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-        <input type="checkbox" checked={config.dmAfterVerify} onChange={e=>setConfig({...config,dmAfterVerify:e.target.checked})} className="h-4 w-4"/>
-        Enviar confirmación por MD y, si existe, la invitación al servidor destino.
-      </label>
-
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-xs leading-relaxed text-slate-300">
-        <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 w-4 h-4 shrink-0 text-blue-400"/><p>La identidad se valida mediante el Discord User ID. El rol configurado se entrega únicamente en este servidor; la redirección al segundo servidor se realiza enviando una invitación privada al usuario ya verificado.</p></div>
-      </div>
-
-      <button onClick={()=>void save()} disabled={saving||!config.channelId||!config.verifiedRoleId} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
-        <Save className="w-4 h-4"/>{saving?"Guardando…":"Guardar verificación"}
-      </button>
-    </section>
-  </div>;
+import { useEffect,useState } from "react";
+import { CheckCircle2,Copy,RefreshCw,Save,ShieldCheck,Users } from "lucide-react";
+type Config={enabled:boolean;channelId:string;verifiedRoleId:string;embedTitle:string;embedDescription:string;buttonLabel:string;targetGuildId:string;dmAfterVerify:boolean};
+const defaults:Config={enabled:false,channelId:"",verifiedRoleId:"",embedTitle:"Verificación segura",embedDescription:"Pulsa el botón para verificar tu cuenta mediante Discord.",buttonLabel:"Verificar con Discord",targetGuildId:"",dmAfterVerify:true};
+export function BotVerificationPanel({guildId}:{guildId:string}){
+ const [config,setConfig]=useState<Config>(defaults);const [data,setData]=useState<any>(null);const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [error,setError]=useState("");const [message,setMessage]=useState("");
+ const load=async()=>{setLoading(true);try{const r=await fetch(`/api/bot/guilds/${guildId}/verification`,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudo cargar");setData(d);setConfig({...defaults,...d.config,targetGuildId:d.config?.targetGuildId||""});setError("")}catch(e){setError(e instanceof Error?e.message:"Error cargando verificación")}finally{setLoading(false)}};
+ useEffect(()=>{void load();const t=setInterval(()=>void load(),15000);return()=>clearInterval(t)},[guildId]);
+ const save=async()=>{setSaving(true);setError("");setMessage("");try{const r=await fetch(`/api/bot/guilds/${guildId}/verification`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"SAVE",config})});const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudo guardar");setMessage(d.message);await load()}catch(e){setError(e instanceof Error?e.message:"Error guardando")}finally{setSaving(false)}};
+ const restore=async()=>{setError("");setMessage("");try{const r=await fetch(`/api/bot/guilds/${guildId}/verification`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"RESTORE",targetGuildId:config.targetGuildId})});const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudo iniciar");setMessage(d.message);await load()}catch(e){setError(e instanceof Error?e.message:"Error iniciando restauración")}};
+ if(loading&&!data)return <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 text-sm text-slate-400">Cargando OAuth…</div>;
+ const targets=(data?.licensedGuilds||[]).filter((g:any)=>g.id!==guildId);
+ return <div className="space-y-5">
+  <div className="grid sm:grid-cols-3 gap-4"><div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><p className="text-xs text-slate-500">OAuth2</p><p className={`mt-2 font-bold ${data?.oauthConfigured?"text-emerald-300":"text-amber-300"}`}>{data?.oauthConfigured?"Configurado":"Falta Client Secret"}</p></div><div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><p className="text-xs text-slate-500">Usuarios restaurables</p><p className="mt-2 text-2xl font-extrabold">{data?.verifiedCount||0}</p></div><div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><p className="text-xs text-slate-500">Método</p><p className="mt-2 font-bold">Discord OAuth2 · guilds.join</p></div></div>
+  {error&&<div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>}{message&&<div className="flex items-center gap-2 rounded-xl border border-emerald-800 bg-emerald-950/30 p-4 text-sm text-emerald-300"><CheckCircle2 className="w-4 h-4"/>{message}</div>}
+  <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-5"><div className="flex items-start justify-between gap-4"><div><h3 className="font-bold">Verificación OAuth de Discord</h3><p className="mt-1 text-xs text-slate-400">El usuario autoriza identify + guilds.join en Discord. Axyon conserva la autorización cifrada para poder restaurarlo en otro servidor licenciado.</p></div><input type="checkbox" checked={config.enabled} onChange={e=>setConfig({...config,enabled:e.target.checked})}/></div>
+  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4"><p className="text-xs font-bold text-blue-300">URL pública de verificación</p><div className="mt-2 flex gap-2"><input readOnly value={data?.verificationUrl||""} className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs font-mono"/><button onClick={()=>navigator.clipboard.writeText(data?.verificationUrl||"")} className="rounded-xl border border-slate-700 px-4"><Copy className="w-4 h-4"/></button></div><p className="mt-2 text-[11px] text-slate-500">Añade exactamente https://www.axyon.es/api/verify/discord/callback como Redirect URI en OAuth2 de la aplicación de Discord.</p></div>
+  <div className="grid md:grid-cols-2 gap-4"><label className="text-sm">ID del canal<input value={config.channelId} onChange={e=>setConfig({...config,channelId:e.target.value})} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono"/></label><label className="text-sm">ID del rol verificado<input value={config.verifiedRoleId} onChange={e=>setConfig({...config,verifiedRoleId:e.target.value})} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono"/></label><label className="text-sm">Título<input value={config.embedTitle} onChange={e=>setConfig({...config,embedTitle:e.target.value})} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/></label><label className="text-sm">Texto del botón<input value={config.buttonLabel} onChange={e=>setConfig({...config,buttonLabel:e.target.value})} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/></label></div>
+  <label className="block text-sm">Descripción<textarea rows={4} value={config.embedDescription} onChange={e=>setConfig({...config,embedDescription:e.target.value})} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3"/></label>
+  <button onClick={()=>void save()} disabled={saving||!data?.oauthConfigured} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold disabled:opacity-50"><Save className="w-4 h-4"/>{saving?"Guardando…":"Guardar OAuth"}</button></section>
+  <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4"><div className="flex items-center gap-2"><Users className="w-5 h-5 text-blue-400"/><h3 className="font-bold">Restaurar / redirigir miembros</h3></div>{targets.length?<><select value={config.targetGuildId} onChange={e=>setConfig({...config,targetGuildId:e.target.value})} className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"><option value="">Selecciona servidor destino</option>{targets.map((g:any)=><option key={g.id} value={g.id}>{g.name} · {g.id}</option>)}</select><button onClick={()=>void restore()} disabled={!config.targetGuildId} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold disabled:opacity-50"><RefreshCw className="w-4 h-4"/>Iniciar restauración</button></>:<p className="text-sm text-slate-400">No hay otro servidor licenciado. Añade un slot de servidor adicional para poder restaurar miembros en otro servidor.</p>}
+  <div className="space-y-2">{(data?.jobs||[]).map((j:any)=><div key={j.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs"><div className="flex justify-between"><strong>{j.status}</strong><span>{j.processed}/{j.total}</span></div><p className="mt-1 text-slate-500">Añadidos {j.added} · Omitidos {j.skipped} · Fallidos {j.failed}</p></div>)}</div></section>
+  <section className="rounded-2xl border border-slate-800 bg-[#111827] p-6"><h3 className="font-bold">Usuarios verificados recientes</h3><div className="mt-4 space-y-2">{(data?.records||[]).map((u:any)=><div key={u.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs"><div><p className="font-semibold">{u.discordUsername||u.discordUserId}</p><p className="text-slate-500 font-mono">{u.discordUserId}</p></div><span className={u.revokedAt?"text-red-300":"text-emerald-300"}>{u.revokedAt?"Revocado":"OAuth activo"}</span></div>)}</div></section>
+ </div>
 }

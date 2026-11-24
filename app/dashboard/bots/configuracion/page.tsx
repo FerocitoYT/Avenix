@@ -4,7 +4,7 @@ import React, {useEffect,useState} from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-type Service = {id:string;name:string;planName:string;subscriptionActive:boolean;expiresAt:string|null;bot:{id:string;applicationId:string|null;guildId:string|null;status:string;observedStatus?:string;lastPingAt?:string|null;tokenConfigured:boolean}|null};
+type Service = {id:string;name:string;planName:string;subscriptionActive:boolean;expiresAt:string|null;bot:{id:string;applicationId:string|null;guildId:string|null;status:string;observedStatus?:string;lastPingAt?:string|null;tokenConfigured:boolean;oauthConfigured?:boolean}|null};
 export default function ConfiguracionBot() {
  const searchParams=useSearchParams();
  const requestedBotId=searchParams.get("botId")||"";
@@ -13,6 +13,7 @@ export default function ConfiguracionBot() {
  const [applicationId,setApplicationId]=useState("");
  const [guildId,setGuildId]=useState("");
  const [botToken,setBotToken]=useState("");
+ const [oauthClientSecret,setOauthClientSecret]=useState("");
  const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
@@ -55,15 +56,15 @@ export default function ConfiguracionBot() {
  useEffect(()=>{
    setApplicationId(service?.bot?.applicationId||"");
    setGuildId(service?.bot?.guildId||"");
-   setBotToken("");setMessage("");setError("");
+   setBotToken("");setOauthClientSecret("");setMessage("");setError("");
  },[selected]);
  const save=async(e:React.FormEvent)=>{
    e.preventDefault();setSaving(true);setError("");setMessage("");
    try {
-     const res=await fetch("/api/client/bot-config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({serviceId:selected,applicationId,guildId,botToken})});
+     const res=await fetch("/api/client/bot-config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({serviceId:selected,applicationId,guildId,botToken,oauthClientSecret})});
      const data=await res.json();
      if(!res.ok) { const details = data.fields && typeof data.fields === "object" ? Object.values(data.fields as Record<string, string[]>).flat().filter(Boolean).join(". ") : ""; throw new Error(details || data.error || "No se pudo guardar"); }
-     setMessage(data.message);setBotToken("");
+     setMessage(data.message);setBotToken("");setOauthClientSecret("");
      await load();
    }catch(e){setError(e instanceof Error?e.message:"Error al guardar");}
    finally{setSaving(false);}
@@ -76,6 +77,7 @@ export default function ConfiguracionBot() {
        <div className="flex flex-wrap gap-3 text-sm"><span className="text-emerald-400">Suscripción activa</span><span className="text-slate-400">Hasta {service.expiresAt?new Date(service.expiresAt).toLocaleDateString("es-ES"):"—"}</span><span className="text-slate-400">Estado real: {service.bot?.observedStatus==="RUNNING"?"Conectado":service.bot?.observedStatus==="RESTARTING"?"Iniciando":service.bot?.observedStatus==="ERROR"?"Error de conexión":service.bot?.observedStatus==="OFFLINE"?"Sin conexión con Discloud":service.bot?.status==="STOPPED"?"Detenido":"Sin confirmar"}</span></div>
        <label className="block text-sm">ID de aplicación (Client ID)<input required pattern="[0-9]{17,20}" value={applicationId} onChange={e=>setApplicationId(e.target.value)} placeholder="ID de aplicación de Discord" className="mt-2 block w-full rounded-lg bg-slate-950 border border-slate-700 p-3"/></label>
        <label className="block text-sm">ID del servidor de Discord<input required pattern="[0-9]{17,20}" value={guildId} onChange={e=>setGuildId(e.target.value)} placeholder="Guild ID" className="mt-2 block w-full rounded-lg bg-slate-950 border border-slate-700 p-3"/></label>
+       <label className="block text-sm">Client Secret OAuth2<input type="password" autoComplete="new-password" value={oauthClientSecret} onChange={e=>setOauthClientSecret(e.target.value)} placeholder={service.bot?.oauthConfigured?"Client Secret guardado •••• (dejar vacío para mantener)":"Client Secret de OAuth2 de Discord"} className="mt-2 block w-full rounded-lg bg-slate-950 border border-slate-700 p-3"/><span className="text-xs text-slate-400 mt-1 block">Necesario para la verificación OAuth y restauración de miembros. Se cifra y nunca vuelve a mostrarse.</span></label>
        <label className="block text-sm">Token del bot<input type="password" autoComplete="new-password" value={botToken} onChange={e=>setBotToken(e.target.value)} placeholder={service.bot?.tokenConfigured?"Token guardado •••• (dejar vacío para mantener)":"Introduce el token de Discord"} className="mt-2 block w-full rounded-lg bg-slate-950 border border-slate-700 p-3"/><span className="text-xs text-slate-400 mt-1 block">Se cifra en el servidor y no vuelve a mostrarse. No lo compartas en tickets ni mensajes.</span></label>
        <p className="text-sm text-amber-300">Al guardar se solicita automáticamente el inicio. El estado cambiará a RUNNING cuando Discloud confirme la conexión con Discord.</p>
        <button disabled={saving||!service.bot} className="rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-5 py-3 font-semibold">{saving?"Guardando…":"Guardar configuración"}</button>

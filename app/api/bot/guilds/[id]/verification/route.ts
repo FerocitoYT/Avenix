@@ -5,41 +5,40 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 const snowflake = z.string().regex(/^\d{17,22}$/);
-const invite = z.union([
-  z.string().url().refine(v => /^https:\/\/(discord\.gg|discord\.com\/invite)\//i.test(v)),
-  z.literal(""),
-  z.null(),
-]).optional();
-
 const schema = z.object({
   enabled: z.boolean(),
-  mode: z.enum(["REACTION","ACCOUNT"]),
   channelId: snowflake,
   verifiedRoleId: snowflake,
-  reactionEmoji: z.string().min(1).max(32).optional(),
   embedTitle: z.string().trim().min(1).max(256),
   embedDescription: z.string().trim().min(1).max(2000),
   buttonLabel: z.string().trim().min(1).max(80),
-  targetInviteUrl: invite,
+  targetGuildId: z.union([snowflake,z.literal(""),z.null()]).optional(),
   dmAfterVerify: z.boolean(),
 });
 
-export async function GET(_req: Request,{params}:{params:{id:string}}){
+export async function GET(req: Request,{params}:{params:{id:string}}){
   const access=await authorizeGuild(params.id);
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
-  const [config,count]=await Promise.all([
+  const instance=await prisma.botInstance.findFirst({
+    where:{guildId:params.id},
+    include:{configuration:true}
+  });
+  if(!instance)return NextResponse.json({error:"Instancia de bot no encontrada"},{status:404});
+  const licensedIds=[params.id,...instance.allowedGuildIds.slice(0,Math.max(0,instance.additionalGuildSlots))];
+  const [config,count,records,guilds,jobs]=await Promise.all([
     prisma.verificationConfig.findUnique({where:{guildId:params.id}}),
-    prisma.verificationRecord.count({where:{guildId:params.id}}),
+    prisma.verificationRecord.count({where:{guildId:params.id,revokedAt:null,scopes:{has:"guilds.join"}}}),
+    prisma.verificationRecord.findMany({where:{guildId:params.id},orderBy:{verifiedAt:"desc"},take:25,select:{id:true,discordUserId:true,discordUsername:true,discordAvatar:true,verifiedAt:true,revokedAt:true,tokenExpiresAt:true,scopes:true}}),
+    prisma.guild.findMany({where:{id:{in:licensedIds}},select:{id:true,name:true,icon:true}}),
+    prisma.memberRestoreJob.findMany({where:{botInstanceId:instance.id},orderBy:{createdAt:"desc"},take:10}),
   ]);
+  const origin=new URL(req.url).origin;
   return NextResponse.json({
     success:true,
-    config:config||{
-      enabled:false,mode:"REACTION",channelId:"",messageId:null,verifiedRoleId:"",
-      reactionEmoji:"✅",embedTitle:"Verificación",
-      embedDescription:"Reacciona o pulsa el botón para verificar tu cuenta.",
-      buttonLabel:"Verificar cuenta",targetInviteUrl:"",dmAfterVerify:true,
-    },
-    verifiedCount:count,
+    oauthConfigured:!!instance.configuration?.oauthClientSecretRef,
+    verificationUrl:`${origin}/api/verify/discord/start?guildId=${encodeURIComponent(params.id)}`,
+    config:config||{enabled:false,channelId:"",messageId:null,verifiedRoleId:"",embedTitle:"Verificación segura",embedDescription:"Pulsa el botón para verificarte mediante Discord.",buttonLabel:"Verificar con Discord",targetGuildId:"",dmAfterVerify:true},
+    verifiedCount:count,records,licensedGuilds:guilds,jobs,
   });
 }
 
@@ -47,24 +46,34 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
   const access=await authorizeGuild(params.id);
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
   const body=await req.json().catch(()=>null);
-  const action=body?.action;
-  if(action==="SAVE"){
+  if(body?.action==="SAVE"){
     const parsed=schema.safeParse(body.config);
     if(!parsed.success)return NextResponse.json({error:"Configuración inválida",fields:parsed.error.flatten().fieldErrors},{status:400});
-    const d=parsed.data;
+    const instance=await prisma.botInstance.findFirst({where:{guildId:params.id},include:{configuration:true}});
+    if(!instance)return NextResponse.json({error:"Instancia no encontrada"},{status:404});
+    if(parsed.data.enabled&&!instance.configuration?.oauthClientSecretRef)return NextResponse.json({error:"Configura primero el Client Secret OAuth2 de la aplicación de Discord"},{status:409});
+    const licensed=[params.id,...instance.allowedGuildIds.slice(0,Math.max(0,instance.additionalGuildSlots))];
+    const target=parsed.data.targetGuildId||null;
+    if(target&&!licensed.includes(target))return NextResponse.json({error:"El servidor destino no está incluido en la licencia de esta instancia"},{status:403});
     const saved=await prisma.verificationConfig.upsert({
       where:{guildId:params.id},
-      create:{guildId:params.id,...d,targetInviteUrl:d.targetInviteUrl||null},
-      update:{...d,targetInviteUrl:d.targetInviteUrl||null},
+      create:{guildId:params.id,enabled:parsed.data.enabled,mode:"OAUTH",channelId:parsed.data.channelId,verifiedRoleId:parsed.data.verifiedRoleId,embedTitle:parsed.data.embedTitle,embedDescription:parsed.data.embedDescription,buttonLabel:parsed.data.buttonLabel,targetGuildId:target,dmAfterVerify:parsed.data.dmAfterVerify,requireGuildJoin:true},
+      update:{enabled:parsed.data.enabled,mode:"OAUTH",channelId:parsed.data.channelId,verifiedRoleId:parsed.data.verifiedRoleId,embedTitle:parsed.data.embedTitle,embedDescription:parsed.data.embedDescription,buttonLabel:parsed.data.buttonLabel,targetGuildId:target,dmAfterVerify:parsed.data.dmAfterVerify,requireGuildJoin:true},
     });
-    return NextResponse.json({success:true,config:saved,message:"Configuración de verificación guardada"});
+    return NextResponse.json({success:true,config:saved,message:"Verificación OAuth guardada"});
   }
-  if(action==="PUBLISH"){
-    const config=await prisma.verificationConfig.findUnique({where:{guildId:params.id}});
-    if(!config||!config.enabled||!config.channelId||!config.verifiedRoleId){
-      return NextResponse.json({error:"Completa y activa la configuración antes de publicar"},{status:400});
-    }
-    return NextResponse.json({success:true,queued:true,message:"El bot publicará o actualizará el panel de verificación automáticamente."});
+  if(body?.action==="RESTORE"){
+    const targetGuildId=typeof body.targetGuildId==="string"?body.targetGuildId:"";
+    const instance=await prisma.botInstance.findFirst({where:{guildId:params.id}});
+    if(!instance)return NextResponse.json({error:"Instancia no encontrada"},{status:404});
+    const licensed=[params.id,...instance.allowedGuildIds.slice(0,Math.max(0,instance.additionalGuildSlots))];
+    if(!targetGuildId||targetGuildId===params.id||!licensed.includes(targetGuildId))return NextResponse.json({error:"Selecciona un servidor destino licenciado distinto al servidor origen"},{status:400});
+    const total=await prisma.verificationRecord.count({where:{guildId:params.id,revokedAt:null,scopes:{has:"guilds.join"},refreshTokenEncrypted:{not:null}}});
+    if(!total)return NextResponse.json({error:"No hay usuarios OAuth restaurables"},{status:409});
+    const existing=await prisma.memberRestoreJob.findFirst({where:{botInstanceId:instance.id,status:{in:["PENDING","PROCESSING"]}}});
+    if(existing)return NextResponse.json({error:"Ya existe una restauración en curso",job:existing},{status:409});
+    const job=await prisma.memberRestoreJob.create({data:{botInstanceId:instance.id,sourceGuildId:params.id,targetGuildId,total}});
+    return NextResponse.json({success:true,job,message:"Restauración añadida a la cola"});
   }
   return NextResponse.json({error:"Acción no válida"},{status:400});
 }

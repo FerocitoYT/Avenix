@@ -10,6 +10,7 @@ const configSchema = z.object({
   applicationId: z.string().regex(/^\d{17,20}$/, "ID de aplicación no válido"),
   guildId: z.string().regex(/^\d{17,20}$/, "Introduce un ID de servidor válido"),
   botToken: z.string().min(30).max(300).optional().or(z.literal("")),
+  oauthClientSecret: z.string().min(10).max(300).optional().or(z.literal("")),
 });
 const active = (s: {status:string;currentPeriodEnd:Date}) =>
   ["ACTIVE","TRIALING"].includes(s.status) && s.currentPeriodEnd > new Date();
@@ -37,6 +38,7 @@ export async function GET() {
       guildName:s.botInstance.guildId?guildMap.get(s.botInstance.guildId)?.name??null:null,
       guildIcon:s.botInstance.guildId?guildMap.get(s.botInstance.guildId)?.icon??null:null,
       serverLimit:1+s.botInstance.additionalGuildSlots,
+      oauthConfigured:!!s.botInstance.configuration?.oauthClientSecretRef,
       tokenConfigured:!!s.botInstance.configuration?.tokenSecretRef
     }:null
   }))});
@@ -47,7 +49,7 @@ export async function POST(req:Request) {
   if(!user) return NextResponse.json({error:"No autorizado"},{status:401});
   const parsed=configSchema.safeParse(await req.json().catch(()=>null));
   if(!parsed.success) return NextResponse.json({error:"Datos de configuración inválidos",fields:parsed.error.flatten().fieldErrors},{status:400});
-  const {serviceId,applicationId,guildId,botToken}=parsed.data;
+  const {serviceId,applicationId,guildId,botToken,oauthClientSecret}=parsed.data;
   const service=await prisma.service.findFirst({
     where:{id:serviceId,userId:user.id,serviceType:"DISCORD_BOT"},
     include:{subscriptions:true,botInstance:{include:{configuration:true}}}
@@ -60,9 +62,14 @@ export async function POST(req:Request) {
   // Saving an unchanged configuration must not disconnect a live Discord client.
   const current = service.botInstance;
   let tokenChanged = Boolean(botToken);
+  let oauthSecretChanged = Boolean(oauthClientSecret);
   if (botToken && current.configuration?.tokenSecretRef) {
     try { tokenChanged = decryptSecret(current.configuration.tokenSecretRef) !== botToken; }
     catch { tokenChanged = true; } // Unreadable existing token must be replaced.
+  }
+  if (oauthClientSecret && current.configuration?.oauthClientSecretRef) {
+    try { oauthSecretChanged = decryptSecret(current.configuration.oauthClientSecretRef) !== oauthClientSecret; }
+    catch { oauthSecretChanged = true; }
   }
   const credentialsChanged = current.botClientId !== applicationId ||
     current.guildId !== guildId || tokenChanged;
@@ -78,11 +85,14 @@ export async function POST(req:Request) {
     }
     await tx.botConfiguration.upsert({
       where:{botInstanceId:current.id},
-      create:{botInstanceId:current.id,tokenSecretRef:botToken?encryptSecret(botToken):null},
-      update:tokenChanged&&botToken?{tokenSecretRef:encryptSecret(botToken)}:{}
+      create:{botInstanceId:current.id,tokenSecretRef:botToken?encryptSecret(botToken):null,oauthClientSecretRef:oauthClientSecret?encryptSecret(oauthClientSecret):null},
+      update:{
+        ...(tokenChanged&&botToken?{tokenSecretRef:encryptSecret(botToken)}:{}),
+        ...(oauthSecretChanged&&oauthClientSecret?{oauthClientSecretRef:encryptSecret(oauthClientSecret)}:{})
+      }
     });
     await tx.auditLog.create({data:{userId:user.id,action:"BOT_CONFIGURATION_UPDATED",entityType:"BOT",entityId:current.id,
-      detailsJson:{credentialsChanged,restartRequested:requestStart}}});
+      detailsJson:{credentialsChanged,restartRequested:requestStart,oauthSecretUpdated:oauthSecretChanged}}});
   });
   return NextResponse.json({success:true,status:requestStart?"RESTARTING":current.status,
     message:requestStart?"Configuración guardada. Se ha solicitado el inicio o reconexión del bot.":"Configuración guardada sin reiniciar el bot."});
