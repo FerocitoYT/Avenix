@@ -170,7 +170,7 @@ export default function DashboardHomePage() {
                   </h3>
                 </div>
                 <Link
-                  href="/dashboard/bots/configurar"
+                  href="/dashboard/bots"
                   className="text-xs font-semibold text-blue-400 hover:underline flex items-center gap-1"
                 >
                   <span>Abrir consola y logs</span>
@@ -200,7 +200,7 @@ export default function DashboardHomePage() {
                       {service.botStatus === "RUNNING" ? "Registrado como activo" : "Detenido"}
                     </span>
                     <Link
-                      href="/dashboard/bots"
+                      href={service.botId ? `/dashboard/bot/${service.botId}` : "/dashboard/bots"}
                       className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700"
                     >
                       Gestionar
