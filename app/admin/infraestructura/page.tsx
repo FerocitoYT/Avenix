@@ -1,4 +1,5 @@
 "use client";
+import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import React, { useState, useEffect } from "react";
 import {
@@ -151,12 +152,7 @@ export default function AdminInfraestructuraPage() {
                       </span>
                     </td>
                     <td className="py-3.5 pr-2 text-right">
-                      <button
-                        onClick={() => restartInstance(inst.id, inst.botName)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-semibold border border-slate-800"
-                      >
-                        Reiniciar Contenedor
-                      </button>
+                      <RestartBotButton id={inst.id} disabled={inst.status==="RESTARTING"}/>
                     </td>
                   </tr>
                 ))
