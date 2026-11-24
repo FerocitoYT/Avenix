@@ -65,6 +65,7 @@ export default function AdminLayout({
     { label: "Suscripciones", href: "/admin/suscripciones", icon: RotateCw },
     { label: "Soporte Tickets", href: "/admin/soporte", icon: LifeBuoy },
     { label: "Infraestructura", href: "/admin/infraestructura", icon: Server },
+    { label: "Mantenimiento", href: "/admin/mantenimiento", icon: Settings },
     { label: "Configuración & Logs", href: "/admin/configuracion", icon: Settings },
   ];
 
