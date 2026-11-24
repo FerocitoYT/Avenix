@@ -1,6 +1,7 @@
 import { authorizeGuild } from "@/lib/bot-access";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { encryptSecret } from "@/lib/crypto";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export async function GET(req: Request,{params}:{params:{id:string}}){
   return NextResponse.json({
     success:true,
     oauthConfigured:!!instance.configuration?.oauthClientSecretRef,
+    applicationId:instance.botClientId,
     verificationUrl:`${origin}/api/verify/discord/start?guildId=${encodeURIComponent(params.id)}`,
     config:config||{enabled:false,channelId:"",messageId:null,verifiedRoleId:"",embedTitle:"Verificación segura",embedDescription:"Pulsa el botón para verificarte mediante Discord.",buttonLabel:"Verificar con Discord",targetGuildId:"",dmAfterVerify:true},
     verifiedCount:count,records,licensedGuilds:guilds,jobs,
@@ -46,6 +48,18 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
   const access=await authorizeGuild(params.id);
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
   const body=await req.json().catch(()=>null);
+  if(body?.action==="SAVE_OAUTH_SECRET"){
+    const clientSecret=typeof body.clientSecret==="string"?body.clientSecret.trim():"";
+    if(clientSecret.length<10||clientSecret.length>300)return NextResponse.json({error:"Introduce un Client Secret OAuth2 válido"},{status:400});
+    const instance=await prisma.botInstance.findFirst({where:{guildId:params.id},include:{configuration:true}});
+    if(!instance)return NextResponse.json({error:"Instancia no encontrada"},{status:404});
+    await prisma.botConfiguration.upsert({
+      where:{botInstanceId:instance.id},
+      create:{botInstanceId:instance.id,oauthClientSecretRef:encryptSecret(clientSecret)},
+      update:{oauthClientSecretRef:encryptSecret(clientSecret)}
+    });
+    return NextResponse.json({success:true,oauthConfigured:true,message:"Client Secret OAuth2 guardado y cifrado"});
+  }
   if(body?.action==="SAVE"){
     const parsed=schema.safeParse(body.config);
     if(!parsed.success)return NextResponse.json({error:"Configuración inválida",fields:parsed.error.flatten().fieldErrors},{status:400});
