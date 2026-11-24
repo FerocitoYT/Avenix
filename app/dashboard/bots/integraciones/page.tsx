@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {BotSocialPanel} from "@/components/dashboard/bot-social-panel";
 import { useSearchParams } from "next/navigation";
 
 type Service = { id: string; name: string; subscriptionActive: boolean; bot?: { id: string } | null };
@@ -173,5 +174,6 @@ export default function IntegrationsPage() {
       <p className="text-sm text-slate-300">En WooCommerce → Ajustes → Avanzado → Webhooks, crea un webhook activo para cada tipo de pedido. Utiliza la URL de entrega y el secreto generado al crear la tienda. Si editas los avisos, no necesitas volver a configurar el secreto.</p>
       <p className="text-xs text-slate-500">Los eventos se guardan en la cola y el host de Axyon los entrega a Discord. La entrega es al menos una vez; en circunstancias excepcionales puede repetirse un aviso.</p>
     </section>
+    {botId && <BotSocialPanel key={botId} botId={botId}/>}
   </main>;
 }
