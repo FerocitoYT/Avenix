@@ -45,7 +45,7 @@ export const BOT_DASHBOARD_MODULES: BotDashboardModule[] = [
     key: "studio", label: "Studio de mensajes", shortLabel: "Studio",
     description: "Embeds y mensajes visuales preparados para Discord.",
     icon: "palette", group: "DISCORD", order: 60, requiresGuild: true,
-    href: (botId, guildId) => `/dashboard/bots/editor?botId=${encodeURIComponent(botId)}&section=studio${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ""}`,
+    href: botId => `/dashboard/bot/${botId}?section=studio`,
   },
   {
     key: "automations", label: "Automatizaciones", shortLabel: "Automatizaciones",
