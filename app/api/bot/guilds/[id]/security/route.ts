@@ -101,3 +101,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "No se pudo guardar la configuración de seguridad" }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request, {params}: {params:{id:string}}) {
+  const access=await authorizeGuild(params.id);
+  if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
+  const guild=await prisma.guild.findUnique({where:{id:params.id},select:{ownerId:true}});
+  if(!access.user.discordId || guild?.ownerId!==access.user.discordId)return NextResponse.json({error:"Solo el propietario del servidor puede gestionar el bloqueo"}, {status:403});
+  const parsed=z.object({activate:z.boolean()}).safeParse(await req.json().catch(()=>null));
+  if(!parsed.success)return NextResponse.json({error:"Acción inválida"},{status:400});
+  const key='security:lockdown-request:'+params.id;
+  try {
+    await prisma.setting.create({data:{key,value:JSON.stringify({activate:parsed.data.activate,requestedBy:access.user.discordId,requestedAt:Date.now()}),category:'SECURITY',isPublic:false}});
+    return NextResponse.json({success:true,pending:true},{status:202});
+  } catch {return NextResponse.json({error:"No se pudo registrar la solicitud o ya existe una pendiente"},{status:409});}
+}
