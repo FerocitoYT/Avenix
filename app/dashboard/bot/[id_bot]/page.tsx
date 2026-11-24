@@ -9,6 +9,7 @@ import {
   Server, CreditCard, ExternalLink,
 } from "lucide-react";
 import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
+import { BotDeliveriesPanel } from "@/components/dashboard/bot-deliveries-panel";
 
 type Service = {
   id: string; name: string; planName: string; subscriptionActive: boolean; expiresAt: string | null;
@@ -142,7 +143,9 @@ export default function BotInstanceDashboardPage() {
       ) : (
         <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6 space-y-4">
           <p className="text-sm text-slate-300">Estás administrando exclusivamente <strong>{service.name}</strong>. Los cambios de esta sección se aplican únicamente a esta instancia.</p>
-          {selectedModule.key === "automations" ? (
+          {selectedModule.key === "deliveries" ? (
+            <BotDeliveriesPanel botId={botId} />
+          ) : selectedModule.key === "automations" ? (
             <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-slate-300">
               El constructor visual de automatizaciones se integrará directamente aquí dentro del Bot Manager.
             </div>
