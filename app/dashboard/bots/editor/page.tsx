@@ -89,6 +89,7 @@ export default function BotControlDashboardPage() {
     leaveMessage: "{user} ha abandonado el servidor.",
     autoRoleId: "",
     autoRoleName: "",
+    imageCard:false, includeBots:true, sendEmbed:true, imagePrimaryColor:"#2563eb",
   });
 
   // Embed Studio State
@@ -185,16 +186,17 @@ export default function BotControlDashboardPage() {
             modLogChannelId: g.securityConfig.modLogChannelId || "",
           });
         }
-        if (g.welcomeConfig) {
+        {
           setWelcome({
-            welcomeEnabled: g.welcomeConfig.welcomeEnabled ?? true,
-            welcomeChannelId: g.welcomeConfig.welcomeChannelId || "",
-            welcomeMessage: g.welcomeConfig.welcomeMessage || "",
-            leaveEnabled: g.welcomeConfig.leaveEnabled ?? false,
-            leaveChannelId: g.welcomeConfig.leaveChannelId || "",
-            leaveMessage: g.welcomeConfig.leaveMessage || "",
+            welcomeEnabled: g.welcomeConfig?.enabled ?? false,
+            welcomeChannelId: g.welcomeConfig?.channelId || "",
+            welcomeMessage: g.welcomeConfig?.messageText || "",
+            leaveEnabled: g.welcomeConfig?.leaveEnabled ?? false,
+            leaveChannelId: g.welcomeConfig?.leaveChannelId || "",
+            leaveMessage: g.welcomeConfig?.leaveMessageText || "",
             autoRoleId: g.autoRoles?.[0]?.roleId || "",
             autoRoleName: g.autoRoles?.[0]?.roleName || "",
+            imageCard:g.welcomeOptions?.imageCard??false,includeBots:g.welcomeOptions?.includeBots??true,sendEmbed:g.welcomeConfig?.sendEmbed??true,imagePrimaryColor:g.welcomeConfig?.imagePrimaryColor||"#2563eb",
           });
         }
         setTicketCategories(g.ticketCategories || []);
@@ -660,6 +662,14 @@ export default function BotControlDashboardPage() {
               </div>
             </div>
 
+            <div className="p-5 rounded-2xl bg-[#111827] border border-slate-800 space-y-4">
+              <h3 className="font-bold">Imagen y contador de bienvenida</h3>
+              <label className="flex gap-3 text-sm"><input type="checkbox" checked={welcome.imageCard} onChange={e=>setWelcome({...welcome,imageCard:e.target.checked,sendEmbed:e.target.checked?true:welcome.sendEmbed})}/>Generar tarjeta con nombre y avatar</label>
+              <label className="flex gap-3 text-sm"><input type="checkbox" checked={welcome.includeBots} onChange={e=>setWelcome({...welcome,includeBots:e.target.checked})}/>Incluir bots en las bienvenidas y en el contador</label>
+              <p className="text-xs text-slate-400">Si lo desactivas, no se enviará bienvenida a bots y el contador intentará mostrar solo personas.</p>
+              <label className="flex gap-3 items-center text-sm"><input type="color" value={welcome.imagePrimaryColor} onChange={e=>setWelcome({...welcome,imagePrimaryColor:e.target.value})}/>Color de la tarjeta</label>
+              {welcome.imageCard&&<img alt="Vista previa de bienvenida" className="w-full rounded-xl" src={"/api/welcome-card?"+new URLSearchParams({name:"Nuevo miembro",server:"Tu servidor",count:"128",color:welcome.imagePrimaryColor})}/>}
+            </div>
             {/* AutoRoles Card */}
             <div className="p-6 rounded-2xl bg-[#111827] border border-slate-800 space-y-4">
               <div className="pb-3 border-b border-slate-800">
