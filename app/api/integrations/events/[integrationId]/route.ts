@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
-import { reserveDelivery, finishDelivery, clean } from "@/lib/integrations/discord-events";
+import { clean } from "@/lib/integrations/discord-events";
+import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,26 +40,29 @@ export async function POST(request: Request, { params }: { params: { integration
       currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now } } },
   } }, select: { id: true } });
   if (!active) return error("Servicio no disponible", 403);
-  const deliveryKey = `integration:api:delivery:${params.integrationId}:${eventId}`;
-  const reserved = await reserveDelivery(deliveryKey);
-  if (reserved === "duplicate") return NextResponse.json({ success: true, duplicate: true });
-  if (reserved === "busy") return error("Entrega en curso", 503);
+  // Only retain the safe event metadata needed for a Discord notification.
+  // Deduplication is enforced by the database, even during concurrent requests.
   try {
-    const url = decryptSecret(entry.discordWebhookEncrypted);
-    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ allowed_mentions: { parse: [] }, embeds: [{
-        title: `🔔 ${type}`, description: clean(data.message || "Evento recibido desde API", 1000),
-        color: 0x5865f2, fields: [
-          { name: "Origen", value: clean(entry.name, 100), inline: true },
-          { name: "Referencia", value: clean(data.reference || eventId, 100), inline: true },
-        ], timestamp: new Date().toISOString(), footer: { text: "Axyon Control · API" },
-      }] }), signal: AbortSignal.timeout(8000) });
-    if (!response.ok) throw new Error(`Discord HTTP ${response.status}`);
-    await finishDelivery(deliveryKey, true);
-    return NextResponse.json({ success: true });
+    const delivery = await prisma.integrationDelivery.create({
+      data: {
+        botId: active.id,
+        integrationId: params.integrationId,
+        eventId,
+        provider: "CUSTOM_API",
+        eventType: type,
+        payload: {
+          message: clean(data.message || "Evento recibido desde API", 1000),
+          reference: clean(data.reference || eventId, 100),
+        },
+      },
+      select: { id: true },
+    });
+    return NextResponse.json({ success: true, queued: true, deliveryId: delivery.id }, { status: 202 });
   } catch (err) {
-    console.error("[Axyon API events] Delivery failed", err);
-    await finishDelivery(deliveryKey, false);
-    return error("No se pudo entregar el evento", 503);
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
+    console.error("[Axyon API] Could not enqueue event:", err);
+    return error("No se pudo guardar el evento; reintenta con el mismo ID", 503);
   }
 }
