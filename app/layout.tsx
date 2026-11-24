@@ -1,3 +1,4 @@
+import {LanguageProvider} from "@/components/language-provider";
 import {CookieNotice} from "@/components/cookie-notice";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -58,8 +59,8 @@ export default function RootLayout({
     <html lang="es" className="dark">
       <body className="font-sans antialiased bg-[#0B1220] text-[#F8FAFC] min-h-screen selection:bg-blue-500/30 selection:text-white">
         <div className="relative flex min-h-screen flex-col">
-          {children}
-          <CookieNotice />
+          <LanguageProvider>{children}
+          <CookieNotice /></LanguageProvider>
         </div>
       </body>
     </html>
