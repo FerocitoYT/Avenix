@@ -1,4 +1,5 @@
 "use client";
+import { BotGiveawaysPanel } from "@/components/dashboard/bot-giveaways-panel";
 import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import { useEffect, useMemo, useState } from "react";
@@ -181,6 +182,8 @@ export default function BotInstanceDashboardPage() {
             <BotInvitesPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "events" && service.bot?.guildId ? (
             <BotEventsPanel guildId={service.bot.guildId} />
+          ) : selectedModule.key === "giveaways" && service.bot?.guildId ? (
+            <BotGiveawaysPanel botId={botId}/>
           ) : selectedModule.key === "polls" && service.bot?.guildId ? (
             <BotPollsPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "voice" && service.bot?.guildId ? (
