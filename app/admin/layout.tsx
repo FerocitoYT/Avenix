@@ -57,6 +57,7 @@ export default function AdminLayout({
 
   const navItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Comunicaciones", href: "/admin/comunicaciones", icon: Users },
     { label: "Clientes", href: "/admin/clientes", icon: Users },
     { label: "Catálogo & Precios", href: "/admin/catalogo", icon: ShoppingBag },
     { label: "Pedidos", href: "/admin/pedidos", icon: PackageCheck },
