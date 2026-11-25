@@ -6,35 +6,35 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Avenix | Build beyond limits",
-    template: "%s | Avenix",
+    default: "Axyon | Build beyond limits",
+    template: "%s | Axyon",
   },
   description:
     "Desarrollo profesional de bots de Discord personalizados, aplicaciones web de alto rendimiento, hosting cloud optimizado y automatizaciones para comunidades y empresas.",
   keywords: [
-    "Avenix",
+    "Axyon",
     "Bots de Discord personalizados",
     "Desarrollo web Next.js",
     "Hosting bots Discord",
     "Automatizaciones API",
     "Software a medida",
-    "Avenix Control",
+    "Axyon Control",
   ],
-  authors: [{ name: "Avenix Team" }],
-  creator: "Avenix",
+  authors: [{ name: "Axyon Team" }],
+  creator: "Axyon",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
     locale: "es_ES",
     url: "/",
-    title: "Avenix — Build beyond limits",
+    title: "Axyon — Build beyond limits",
     description:
       "Transformamos tus ideas en soluciones digitales. Bots de Discord a medida, plataformas web modernas y hosting de alta disponibilidad.",
-    siteName: "Avenix",
+    siteName: "Axyon",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Avenix — Build beyond limits",
+    title: "Axyon — Build beyond limits",
     description:
       "Transformamos tus ideas en soluciones digitales. Bots de Discord a medida, plataformas web modernas y hosting de alta disponibilidad.",
   },

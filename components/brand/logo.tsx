@@ -97,7 +97,7 @@ export function AvenixLogo({
       {!iconOnly && (
         <div className="flex flex-col select-none">
           <span className="font-extrabold tracking-wider text-white text-lg md:text-xl font-display">
-            AVENIX
+            Axyon
           </span>
         </div>
       )}
