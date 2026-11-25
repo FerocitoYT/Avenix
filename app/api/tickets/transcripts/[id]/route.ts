@@ -17,6 +17,8 @@ async function highRank(guildId:string,discordId:string|null){
  }catch{return false;}
 }
 export async function GET(req:Request,{params}:{params:{id:string}}){
+ const authSecret=process.env.JWT_SECRET||process.env.AUTH_SECRET||"";
+ if(authSecret.length<32||authSecret==="avenix-secure-jwt-key-2026-production")return NextResponse.json({error:"Acceso temporalmente no disponible"},{status:503,headers:{"Cache-Control":"no-store"}});
  const session=await getCurrentUser();if(!session)return NextResponse.json({error:"Inicia sesión en www.axyon.es para consultar la transcripción."},{status:401});
  const user=await prisma.user.findFirst({where:{id:session.id,isActive:true},select:{id:true,role:true,discordId:true}});
  if(!user)return new NextResponse(null,{status:403});
