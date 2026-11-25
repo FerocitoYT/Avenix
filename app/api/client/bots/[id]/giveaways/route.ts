@@ -7,18 +7,18 @@ import {encryptSecret,encryptionKeyReady} from "@/lib/crypto";
 export const dynamic="force-dynamic";
 const snow=z.string().regex(/^\d{17,22}$/);
 const prize=z.object({label:z.string().trim().min(1).max(100),mode:z.enum(["MANUAL","TEXT","STOCK"]),text:z.string().max(1500).optional(),sourceId:z.string().max(100).optional(),productKey:z.string().max(200).optional(),quantity:z.number().int().min(1).max(10).default(1)});
-const schema=z.object({title:z.string().trim().min(3).max(120),description:z.string().trim().max(1500),channelId:snow,requiredRoleId:z.union([snow,z.literal("")]).optional(),pingRoleId:z.union([snow,z.literal("")]).optional(),color:z.string().regex(/^#[0-9a-fA-F]{6}$/),buttonLabel:z.string().trim().min(1).max(60),duration:z.number().int().min(1).max(43200),footer:z.string().trim().max(200).default("Axyon"),author:z.string().trim().max(100).default(""),logoPosition:z.enum(["NONE","LEFT","RIGHT"]).default("RIGHT"),showTimestamp:z.boolean().default(false),showFooterCount:z.boolean().default(true),prizes:z.array(prize).min(1).max(20)});
+const schema=z.object({requestId:z.string().uuid().optional(),title:z.string().trim().min(3).max(120),description:z.string().trim().max(1500),channelId:snow,requiredRoleId:z.union([snow,z.literal("")]).optional(),pingRoleId:z.union([snow,z.literal("")]).optional(),color:z.string().regex(/^#[0-9a-fA-F]{6}$/),buttonLabel:z.string().trim().min(1).max(60),duration:z.number().int().min(1).max(43200),footer:z.string().trim().max(200).default("Axyon"),author:z.string().trim().max(100).default(""),logoPosition:z.enum(["NONE","LEFT","RIGHT"]).default("RIGHT"),showTimestamp:z.boolean().default(false),showFooterCount:z.boolean().default(true),prizes:z.array(prize).min(1).max(20)});
 async function access(id:string){const u=await getCurrentUser();if(!u)return null;const now=new Date();const bot=await prisma.botInstance.findFirst({where:{id,service:{userId:u.id,serviceType:"DISCORD_BOT",status:"ACTIVE",subscriptions:{some:{userId:u.id,status:{in:["ACTIVE","TRIALING"]},currentPeriodStart:{lte:now},currentPeriodEnd:{gt:now}}}}}});return bot?.guildId?{bot,u,guildId:bot.guildId}:null;}
 const prefix=(id:string)=>"web-giveaway:"+id+":";
 function publicRecord(v:any){return {id:v.id,title:v.title,description:v.description,footer:v.footer||"",author:v.author||"",logoPosition:v.logoPosition||"NONE",showTimestamp:!!v.showTimestamp,showFooterCount:v.showFooterCount!==false,channelId:v.channelId,status:v.status,endsAt:v.endsAt,createdAt:v.createdAt,prizes:v.prizes.map((p:any)=>({label:p.label,mode:p.mode,quantity:p.quantity,winner:p.winner||null,delivery:p.delivery||null})),participants:(v.participants||[]).length,lastError:v.lastError||null};}
-export async function GET(_req:Request,{params}:{params:{id:string}}){
+async function getGiveaways(_req:Request,{params}:{params:{id:string}}){
  const a=await access(params.id);if(!a)return NextResponse.json({error:"Acceso no autorizado"},{status:403});
  encryptionKeyReady();
  const [rows,sources]=await Promise.all([prisma.setting.findMany({where:{key:{startsWith:prefix(a.bot.id)}},orderBy:{updatedAt:"desc"},take:100}),prisma.deliverySource.findMany({where:{botId:a.bot.id,enabled:true},select:{id:true,name:true,stockItems:{where:{status:"AVAILABLE"},select:{productKey:true}}}})]);
  const stock=sources.flatMap(s=>{const counts=new Map<string,number>();for(const i of s.stockItems)counts.set(i.productKey,(counts.get(i.productKey)||0)+1);return Array.from(counts,([productKey,available])=>({sourceId:s.id,sourceName:s.name,productKey,available}));});
- return NextResponse.json({giveaways:rows.map(r=>publicRecord(JSON.parse(r.value))),stock},{headers:{"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache"}});
+ return NextResponse.json({giveaways:rows.flatMap(r=>{try{return [publicRecord(JSON.parse(r.value))];}catch{console.error("[Giveaways] Invalid stored giveaway record");return [];}}),stock},{headers:{"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache"}});
 }
-export async function POST(req:Request,{params}:{params:{id:string}}){
+async function postGiveaway(req:Request,{params}:{params:{id:string}}){
  const a=await access(params.id);if(!a)return NextResponse.json({error:"Acceso no autorizado"},{status:403});
  const raw=await req.json().catch(()=>null);
  if(raw?.action==="cancel"||raw?.action==="retry"){
@@ -32,9 +32,11 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
  });return NextResponse.json({success:true});}catch{return NextResponse.json({error:"No se pudo realizar esta acción en el estado actual."},{status:409});}
  }
  const parsed=schema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"Revisa los campos del sorteo y los premios."},{status:400});
- const d=parsed.data,id=randomUUID(),key=prefix(a.bot.id)+id;
+ const d=parsed.data,id=d.requestId||randomUUID(),key=prefix(a.bot.id)+id;
  if(d.prizes.some(p=>p.mode!=="MANUAL")&&!encryptionKeyReady())return NextResponse.json({error:"La entrega automática no está disponible temporalmente. El equipo técnico debe revisar la configuración."},{status:503});
  try{await prisma.$transaction(async tx=>{
+ await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text AS locked`;
+ const existing=await tx.setting.findUnique({where:{key},select:{key:true}});if(existing)return;
  const places:any[]=[];
  for(let i=0;i<d.prizes.length;i++){
  const p=d.prizes[i];
@@ -57,3 +59,6 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
  },{timeout:15000});return NextResponse.json({success:true,id},{headers:{"Cache-Control":"private, no-store"}});}
  catch(e){return NextResponse.json({error:e instanceof Error&&e.message==="STOCK"?"Stock insuficiente o no pertenece a este bot.":e instanceof Error&&e.message==="TEXT"?"Introduce el contenido privado del premio.":e instanceof Error&&e.message==="PUBLIC_SECRET"?"El contenido privado del premio no puede aparecer en campos públicos.":"No se pudo guardar el sorteo."},{status:409});}
 }
+
+export async function GET(req:Request,ctx:{params:{id:string}}){try{return await getGiveaways(req,ctx);}catch{console.error("[Giveaways] GET failed");return NextResponse.json({error:"No se pudo consultar el historial. Inténtalo de nuevo."},{status:500,headers:{"Cache-Control":"private, no-store"}});}}
+export async function POST(req:Request,ctx:{params:{id:string}}){try{return await postGiveaway(req,ctx);}catch{console.error("[Giveaways] POST failed");return NextResponse.json({error:"No se pudo confirmar la solicitud. Consulta el historial antes de repetirla."},{status:500,headers:{"Cache-Control":"private, no-store"}});}}
