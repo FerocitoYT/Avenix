@@ -3,6 +3,7 @@ import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {BotTokenWarning} from "@/components/dashboard/bot-token-warning";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   Activity, Bot, CheckCircle2, Clock3, History, LayoutDashboard, Palette,
@@ -101,6 +102,7 @@ export default function BotInstanceDashboardPage() {
   const observed = service.bot?.observedStatus || service.bot?.status || "OFFLINE";
   const connected = observed === "RUNNING";
   return <main className="mx-auto w-full min-w-0 max-w-7xl p-4 md:p-10 text-white space-y-6">
+    {service.bot&&<BotTokenWarning botId={service.bot.id} health={service.bot.tokenHealth}/> }
     <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5 border-b border-slate-800 pb-6">
       <div className="flex items-start gap-4">
         {service.bot?.guildId && service.bot?.guildIcon ? <img src={service.bot.guildIcon.startsWith("http") ? service.bot.guildIcon : `https://cdn.discordapp.com/icons/${service.bot.guildId}/${service.bot.guildIcon}.png?size=128`} alt={service.bot.guildName || "Servidor de Discord"} className="w-12 h-12 rounded-2xl border border-slate-700 object-cover"/> : <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center"><Bot className="w-6 h-6"/></div>}

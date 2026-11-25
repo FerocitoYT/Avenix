@@ -133,7 +133,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
           </div>
           <div className="shrink-0 border-t border-slate-800 px-4 py-3 bg-[#0b1322]"><Link href="/dashboard/bots" onClick={()=>setMobileOpen(false)} className="flex items-center gap-3 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300"><ArrowLeft className="w-4 h-4 shrink-0"/>Volver al panel de cliente</Link></div>
         </div>,document.body)}
-      <main className="min-h-screen overflow-y-auto">{bot?.id===botId&&bot&&<div className="px-4 pt-4 md:px-10"><BotTokenWarning botId={botId} health={bot.tokenHealth}/></div>}{children}</main>
+      <main className="min-h-screen overflow-y-auto">{!/^\/dashboard\/bot\/[^/]+\/?$/.test(pathname)&&bot?.id===botId&&bot&&bot.tokenHealth&&bot.tokenHealth!=="VALID"&&<div className="mx-auto max-w-7xl px-4 pt-4 md:px-10"><BotTokenWarning botId={botId} health={bot.tokenHealth}/></div>}{children}</main>
     </div>
   </div>;
 }
