@@ -17,11 +17,11 @@ const schema=z.object({
 export async function GET(_req:Request,{params}:{params:{id:string}}){
   const access=await authorizeGuild(params.id);
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
-  const config=await prisma.guildLogConfig.findUnique({where:{guildId:params.id}});
+  const config=await prisma.guildLogConfig.findUnique({where:{guildId:params.id}});const legacy=await prisma.securityConfig.findUnique({where:{guildId:params.id},select:{logChannelId:true}});
   return NextResponse.json({
     success:true,
     canConfigureBotLogs:params.id===BOT_LOG_GUILD,
-    config:config||{generalChannelId:"",moderationChannelId:"",ticketsChannelId:"",paymentsChannelId:"",botsChannelId:""}
+    config:config||{generalChannelId:"",moderationChannelId:legacy?.logChannelId||"",ticketsChannelId:"",paymentsChannelId:"",botsChannelId:""}
   });
 }
 
@@ -41,7 +41,7 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
     paymentsChannelId:d.paymentsChannelId||null,
     ...(params.id===BOT_LOG_GUILD?{botsChannelId:d.botsChannelId||null}:{botsChannelId:null})
   };
-  const config=await prisma.guildLogConfig.upsert({where:{guildId:params.id},create:{guildId:params.id,...data},update:data});
+  const config=await prisma.$transaction(async tx=>{const saved=await tx.guildLogConfig.upsert({where:{guildId:params.id},create:{guildId:params.id,...data},update:data});await tx.securityConfig.updateMany({where:{guildId:params.id},data:{logChannelId:saved.moderationChannelId}});return saved;});
   await prisma.discordLogEvent.create({data:{guildId:params.id,category:"GENERAL",title:"Configuración de logs actualizada",description:"Los canales de registro del servidor se han actualizado desde Axyon Control."}});
   return NextResponse.json({success:true,config,message:"Configuración de logs guardada"});
 }

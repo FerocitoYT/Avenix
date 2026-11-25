@@ -39,23 +39,24 @@ const schema = z.object({
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const access = await authorizeGuild(params.id);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
-  const [config, recentCases, advancedSetting, lockdown, lockdownRequest, lockdownResult] = await Promise.all([
+  const [config, recentCases, advancedSetting, lockdown, lockdownRequest, lockdownResult, logConfig] = await Promise.all([
     prisma.securityConfig.findUnique({ where: { guildId: params.id } }),
     prisma.modCase.findMany({ where: { guildId: params.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     prisma.setting.findUnique({where:{key:'security:advanced:'+params.id}}),
     prisma.setting.findUnique({where:{key:'security:lockdown:'+params.id}}),
     prisma.setting.findUnique({where:{key:'security:lockdown-request:'+params.id}}),
     prisma.setting.findUnique({where:{key:'security:lockdown-result:'+params.id}}),
+    prisma.guildLogConfig.findUnique({where:{guildId:params.id}}),
   ]);
   return NextResponse.json({
     success: true,
-    config: config ?? {
+    config: {...(config ?? {
       antispamEnabled: true, spamThreshold: 6, spamTimeWindowSeconds: 5, repeatThreshold: 4,
       automodAction: "TIMEOUT", automodTimeoutSeconds: 300, simulationMode: false,
       antiraidEnabled: false, antiraidJoinThreshold: 10, raidWindowSeconds: 10, raidAction: "TIMEOUT",
       antiMassMentionCount: 5, blockInviteLinks: true, blockAllLinks: false, filterRepeatedText: true,
       minAccountAgeDays: 3, bannedWords: [], exemptRoleIds: [], exemptChannelIds: [], logChannelId: null,
-    },
+    }),logChannelId:logConfig?logConfig.moderationChannelId:config?.logChannelId??null},
     recentCases,
     emergency:{active:!!lockdown,pending:!!lockdownRequest,result:lockdownResult?JSON.parse(lockdownResult.value):null},
     advanced: advancedSetting ? advancedSchema.parse(JSON.parse(advancedSetting.value)) : advancedDefaults,
@@ -80,7 +81,7 @@ async function handlePOST(req: Request, { params }: { params: { id: string } }) 
     ...(d.raidThreshold !== undefined ? { antiraidJoinThreshold: d.raidThreshold } : {}),
     ...(d.raidWindowSeconds !== undefined ? { raidWindowSeconds: d.raidWindowSeconds } : {}),
     ...(d.raidAction !== undefined ? { raidAction: d.raidAction } : {}),
-    ...(d.modLogChannelId !== undefined ? { logChannelId: d.modLogChannelId || null } : {}),
+
     ...(d.blockInviteLinks !== undefined ? { blockInviteLinks: d.blockInviteLinks } : {}),
     ...(d.blockAllLinks !== undefined ? { blockAllLinks: d.blockAllLinks } : {}),
     ...(d.filterRepeatedText !== undefined ? { filterRepeatedText: d.filterRepeatedText } : {}),
