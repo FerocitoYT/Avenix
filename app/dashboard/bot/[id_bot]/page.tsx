@@ -183,7 +183,7 @@ export default function BotInstanceDashboardPage() {
           ) : selectedModule.key === "events" && service.bot?.guildId ? (
             <BotEventsPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "giveaways" && service.bot?.guildId ? (
-            <BotGiveawaysPanel botId={botId}/>
+            <BotGiveawaysPanel botId={botId} guildId={service.bot.guildId} guildIcon={service.bot.guildIcon} guildName={service.bot.guildName}/>
           ) : selectedModule.key === "polls" && service.bot?.guildId ? (
             <BotPollsPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "voice" && service.bot?.guildId ? (

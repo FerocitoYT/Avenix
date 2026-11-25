@@ -7,15 +7,15 @@ import {encryptSecret} from "@/lib/crypto";
 export const dynamic="force-dynamic";
 const snow=z.string().regex(/^\d{17,22}$/);
 const prize=z.object({label:z.string().trim().min(1).max(100),mode:z.enum(["MANUAL","TEXT","STOCK"]),text:z.string().max(1500).optional(),sourceId:z.string().max(100).optional(),productKey:z.string().max(200).optional(),quantity:z.number().int().min(1).max(10).default(1)});
-const schema=z.object({title:z.string().trim().min(3).max(120),description:z.string().trim().max(1500),channelId:snow,requiredRoleId:z.union([snow,z.literal("")]).optional(),pingRoleId:z.union([snow,z.literal("")]).optional(),color:z.string().regex(/^#[0-9a-fA-F]{6}$/),buttonLabel:z.string().trim().min(1).max(60),duration:z.number().int().min(1).max(43200),prizes:z.array(prize).min(1).max(20)});
+const schema=z.object({title:z.string().trim().min(3).max(120),description:z.string().trim().max(1500),channelId:snow,requiredRoleId:z.union([snow,z.literal("")]).optional(),pingRoleId:z.union([snow,z.literal("")]).optional(),color:z.string().regex(/^#[0-9a-fA-F]{6}$/),buttonLabel:z.string().trim().min(1).max(60),duration:z.number().int().min(1).max(43200),footer:z.string().trim().max(200).default("Axyon"),author:z.string().trim().max(100).default(""),logoPosition:z.enum(["NONE","LEFT","RIGHT"]).default("RIGHT"),showTimestamp:z.boolean().default(false),showFooterCount:z.boolean().default(true),prizes:z.array(prize).min(1).max(20)});
 async function access(id:string){const u=await getCurrentUser();if(!u)return null;const now=new Date();const bot=await prisma.botInstance.findFirst({where:{id,service:{userId:u.id,serviceType:"DISCORD_BOT",status:"ACTIVE",subscriptions:{some:{userId:u.id,status:{in:["ACTIVE","TRIALING"]},currentPeriodStart:{lte:now},currentPeriodEnd:{gt:now}}}}}});return bot?.guildId?{bot,u,guildId:bot.guildId}:null;}
 const prefix=(id:string)=>"web-giveaway:"+id+":";
-function publicRecord(v:any){return {id:v.id,title:v.title,description:v.description,channelId:v.channelId,status:v.status,endsAt:v.endsAt,createdAt:v.createdAt,prizes:v.prizes.map((p:any)=>({label:p.label,mode:p.mode,quantity:p.quantity,winner:p.winner||null,delivery:p.delivery||null})),participants:(v.participants||[]).length,lastError:v.lastError||null};}
+function publicRecord(v:any){return {id:v.id,title:v.title,description:v.description,footer:v.footer||"",author:v.author||"",logoPosition:v.logoPosition||"NONE",showTimestamp:!!v.showTimestamp,showFooterCount:v.showFooterCount!==false,channelId:v.channelId,status:v.status,endsAt:v.endsAt,createdAt:v.createdAt,prizes:v.prizes.map((p:any)=>({label:p.label,mode:p.mode,quantity:p.quantity,winner:p.winner||null,delivery:p.delivery||null})),participants:(v.participants||[]).length,lastError:v.lastError||null};}
 export async function GET(_req:Request,{params}:{params:{id:string}}){
  const a=await access(params.id);if(!a)return NextResponse.json({error:"Acceso no autorizado"},{status:403});
  const [rows,sources]=await Promise.all([prisma.setting.findMany({where:{key:{startsWith:prefix(a.bot.id)}},orderBy:{updatedAt:"desc"},take:100}),prisma.deliverySource.findMany({where:{botId:a.bot.id,enabled:true},select:{id:true,name:true,stockItems:{where:{status:"AVAILABLE"},select:{productKey:true}}}})]);
  const stock=sources.flatMap(s=>{const counts=new Map<string,number>();for(const i of s.stockItems)counts.set(i.productKey,(counts.get(i.productKey)||0)+1);return Array.from(counts,([productKey,available])=>({sourceId:s.id,sourceName:s.name,productKey,available}));});
- return NextResponse.json({giveaways:rows.map(r=>publicRecord(JSON.parse(r.value))),stock});
+ return NextResponse.json({giveaways:rows.map(r=>publicRecord(JSON.parse(r.value))),stock},{headers:{"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache"}});
 }
 export async function POST(req:Request,{params}:{params:{id:string}}){
  const a=await access(params.id);if(!a)return NextResponse.json({error:"Acceso no autorizado"},{status:403});
@@ -36,7 +36,7 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
  const places:any[]=[];
  for(const [i,p] of d.prizes.entries()){
  const item:any={label:p.label,mode:p.mode,quantity:p.quantity,delivery:null};
- if(p.mode==="TEXT"){if(!p.text?.trim())throw Error("TEXT");item.secret=encryptSecret(p.text);}
+ if(p.mode==="TEXT"){if(!p.text?.trim())throw Error("TEXT");const privateText=p.text.trim();const publicFields=[d.title,d.description,d.footer,d.author,d.buttonLabel,...d.prizes.map(x=>x.label)];if(publicFields.some(x=>x.includes(privateText)))throw Error("PUBLIC_SECRET");item.secret=encryptSecret(p.text);}
  if(p.mode==="STOCK"){
  if(!p.sourceId||!p.productKey)throw Error("STOCK");
  const source=await tx.deliverySource.findFirst({where:{id:p.sourceId,botId:a.bot.id,enabled:true},select:{id:true}});if(!source)throw Error("STOCK");
@@ -49,8 +49,8 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
  }
  places.push(item);
  }
- const v={id,botId:a.bot.id,guildId:a.guildId,createdAt:new Date().toISOString(),hostedBy:a.u.discordId||null,title:d.title,description:d.description,channelId:d.channelId,requiredRoleId:d.requiredRoleId||null,pingRoleId:d.pingRoleId||null,color:d.color,buttonLabel:d.buttonLabel,duration:d.duration,prizes:places,participants:[],status:"QUEUED",endsAt:null};
+ const v={id,botId:a.bot.id,guildId:a.guildId,createdAt:new Date().toISOString(),hostedBy:a.u.discordId||null,title:d.title,description:d.description,channelId:d.channelId,requiredRoleId:d.requiredRoleId||null,pingRoleId:d.pingRoleId||null,color:d.color,buttonLabel:d.buttonLabel,footer:d.footer,author:d.author,logoPosition:d.logoPosition,showTimestamp:d.showTimestamp,showFooterCount:d.showFooterCount,duration:d.duration,prizes:places,participants:[],status:"QUEUED",endsAt:null};
  await tx.setting.create({data:{key,value:JSON.stringify(v),category:"WEB_GIVEAWAY",isPublic:false}});
- },{timeout:15000});return NextResponse.json({success:true,id});}
- catch(e){return NextResponse.json({error:e instanceof Error&&e.message==="STOCK"?"Stock insuficiente o no pertenece a este bot.":e instanceof Error&&e.message==="TEXT"?"Introduce el contenido privado del premio.":"No se pudo guardar el sorteo."},{status:409});}
+ },{timeout:15000});return NextResponse.json({success:true,id},{headers:{"Cache-Control":"private, no-store"}});}
+ catch(e){return NextResponse.json({error:e instanceof Error&&e.message==="STOCK"?"Stock insuficiente o no pertenece a este bot.":e instanceof Error&&e.message==="TEXT"?"Introduce el contenido privado del premio.":e instanceof Error&&e.message==="PUBLIC_SECRET"?"El contenido privado del premio no puede aparecer en campos públicos.":"No se pudo guardar el sorteo."},{status:409});}
 }
