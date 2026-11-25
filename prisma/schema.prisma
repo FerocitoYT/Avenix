@@ -94,6 +94,9 @@ enum TicketStatus {
   WAITING_CLIENT
   RESOLVED
   CLOSED
+  CLAIMED
+  LOCKED
+  DELETED
 }
 
 enum BotStatus {
