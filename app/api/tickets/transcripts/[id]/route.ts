@@ -25,7 +25,7 @@ export async function GET(req:Request,{params}:{params:{id:string}}){
  const record=await prisma.ticketTranscript.findUnique({where:{id:params.id},include:{ticket:{select:{guildId:true,creatorDiscordId:true,creatorId:true}}}});
  if(!record)return new NextResponse(null,{status:404});
  const t=record.ticket;
- const allowed=user.role==="ADMIN"||t.creatorId===user.id||(!!user.discordId&&t.creatorDiscordId===user.discordId)||await highRank(t.guildId,user.discordId);
+ const allowed=t.creatorId===user.id||(!!user.discordId&&t.creatorDiscordId===user.discordId)||await highRank(t.guildId,user.discordId);
  if(!allowed)return new NextResponse(null,{status:404});
  return new NextResponse(record.htmlContent,{headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"private, no-store","Content-Security-Policy":"sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src https://cdn.discordapp.com https://media.discordapp.net; base-uri 'none'; form-action 'none'; frame-ancestors 'none'","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"}});
 }
