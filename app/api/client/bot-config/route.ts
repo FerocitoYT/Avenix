@@ -16,6 +16,20 @@ const configSchema = z.object({
 const active = (s: {status:string;currentPeriodEnd:Date}) =>
   ["ACTIVE","TRIALING"].includes(s.status) && s.currentPeriodEnd > new Date();
 
+type TokenHealth = "VALID" | "INVALID" | "MISSING" | "MISMATCH" | "UNREADABLE" | "UNAVAILABLE";
+async function checkToken(ref:string|null|undefined, applicationId:string|null|undefined, supplied?:string):Promise<TokenHealth>{
+ if(!supplied&&!ref)return "MISSING";
+ let token:string;
+ try{token=supplied||decryptSecret(ref!);}catch{return "UNREADABLE";}
+ try{
+ const response=await fetch("https://discord.com/api/v10/users/@me",{headers:{Authorization:"Bot "+token},cache:"no-store",signal:AbortSignal.timeout(4500)});
+ if(response.status===401)return "INVALID";
+ if(!response.ok)return "UNAVAILABLE";
+ const identity=await response.json();
+ if(identity.bot!==true||typeof identity.id!=="string")return "INVALID";
+ return applicationId&&identity.id!==applicationId?"MISMATCH":"VALID";
+ }catch{return "UNAVAILABLE";}
+}
 export async function GET() {
   const user = await getCurrentUser();
   if(user&&(await maintenanceState()).mode!=="OFF")return NextResponse.json({error:"Panel en mantenimiento"},{status:503});
@@ -28,6 +42,8 @@ export async function GET() {
   const guildIds = services.flatMap(s => s.botInstance?.guildId ? [s.botInstance.guildId] : []);
   const guilds = guildIds.length ? await prisma.guild.findMany({ where: { id: { in: guildIds } }, select: { id:true,name:true,icon:true } }) : [];
   const guildMap = new Map(guilds.map(g => [g.id,g]));
+  const health = new Map<string,TokenHealth>();
+  await Promise.all(services.filter(s=>s.botInstance&&s.subscriptions.some(active)).map(async s=>{const b=s.botInstance!;health.set(b.id,await checkToken(b.configuration?.tokenSecretRef,b.botClientId));}));
   return NextResponse.json({success:true,services:services.map(s=>({
     id:s.id,name:s.name,planName:s.planName,
     subscriptionActive:s.subscriptions.some(active),
@@ -41,6 +57,7 @@ export async function GET() {
       guildIcon:s.botInstance.guildId?guildMap.get(s.botInstance.guildId)?.icon??null:null,
       serverLimit:1+s.botInstance.additionalGuildSlots,
       oauthConfigured:!!s.botInstance.configuration?.oauthClientSecretRef,
+      tokenHealth:health.get(s.botInstance.id)??null,
       tokenConfigured:!!s.botInstance.configuration?.tokenSecretRef
     }:null
   }))});
@@ -64,6 +81,10 @@ export async function POST(req:Request) {
     return NextResponse.json({error:"Introduce el token del bot"},{status:400});
   // Saving an unchanged configuration must not disconnect a live Discord client.
   const current = service.botInstance;
+  if(botToken||current.botClientId!==applicationId){
+    const health=await checkToken(current.configuration?.tokenSecretRef,applicationId,botToken||undefined);
+    if(health!=="VALID")return NextResponse.json({error:health==="INVALID"?"Discord ha rechazado el token. Introduce uno válido.":health==="MISMATCH"?"El token pertenece a otra aplicación de Discord.":health==="UNAVAILABLE"?"No se pudo verificar el token con Discord. Reintenta más tarde.":"Introduce un token válido para este bot."},{status:health==="UNAVAILABLE"?503:400});
+  }
   let tokenChanged = Boolean(botToken);
   let oauthSecretChanged = Boolean(oauthClientSecret);
   if (botToken && current.configuration?.tokenSecretRef) {

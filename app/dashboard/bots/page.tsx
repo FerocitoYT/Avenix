@@ -3,6 +3,7 @@ import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {BotTokenWarning} from "@/components/dashboard/bot-token-warning";
 import { orderedBotDashboardModules } from "@/lib/bot-dashboard-modules";
 import { Bot, AlertCircle, ArrowRight, Server, CreditCard, CheckCircle2 } from "lucide-react";
 
@@ -19,6 +20,7 @@ type Service = {
     status: string;
     observedStatus?: string;
     tokenConfigured: boolean;
+    tokenHealth?:string|null;
   } | null;
 };
 
@@ -71,6 +73,7 @@ export default function BotsPage() {
             </span>
           </div>
 
+          {service.subscriptionActive&&service.bot&&<BotTokenWarning botId={service.bot.id} health={service.bot.tokenHealth}/>}
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="text-slate-500 flex items-center gap-1.5"><Server className="w-3.5 h-3.5"/>Servidor</span><p className="mt-2 truncate text-slate-200">{service.bot?.guildId || "Sin configurar"}</p></div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="text-slate-500 flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Vigencia</span><p className="mt-2 text-slate-200">{service.expiresAt ? new Date(service.expiresAt).toLocaleDateString("es-ES") : "Finalizada"}</p></div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {BotTokenWarning} from "@/components/dashboard/bot-token-warning";
 import { createPortal } from "react-dom";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AvenixLogo } from "@/components/brand/logo";
@@ -11,7 +12,7 @@ import {
   Settings, Shield, ShoppingBag, Ticket, UserCheck, Workflow, X, ChevronDown, Users, ClipboardList
 } from "lucide-react";
 
-type BotInfo = { id:string; name:string; guildId:string|null; status:string };
+type BotInfo = { id:string; name:string; guildId:string|null; status:string; tokenHealth?:string|null };
 const icons: Record<string, React.ComponentType<{className?:string}>> = {
   "layout-dashboard": LayoutDashboard,
   settings: Settings,
@@ -60,7 +61,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
     fetch("/api/client/bot-config",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>{
       if(!active||!data)return;
       const service=(data.services||[]).find((s:any)=>s.subscriptionActive&&s.bot?.id===botId);
-      if(service?.bot)setBot({id:service.bot.id,name:service.name,guildId:service.bot.guildId||null,status:service.bot.observedStatus||service.bot.status||"STOPPED"});
+      if(service?.bot)setBot({id:service.bot.id,name:service.name,guildId:service.bot.guildId||null,status:service.bot.observedStatus||service.bot.status||"STOPPED",tokenHealth:service.bot.tokenHealth});
     }).catch(()=>{});
     return()=>{active=false};
   },[botId]);
@@ -132,7 +133,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
           </div>
           <div className="shrink-0 border-t border-slate-800 px-4 py-3 bg-[#0b1322]"><Link href="/dashboard/bots" onClick={()=>setMobileOpen(false)} className="flex items-center gap-3 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300"><ArrowLeft className="w-4 h-4 shrink-0"/>Volver al panel de cliente</Link></div>
         </div>,document.body)}
-      <main className="min-h-screen overflow-y-auto">{children}</main>
+      <main className="min-h-screen overflow-y-auto">{bot?.id===botId&&bot&&<div className="px-4 pt-4 md:px-10"><BotTokenWarning botId={botId} health={bot.tokenHealth}/></div>}{children}</main>
     </div>
   </div>;
 }

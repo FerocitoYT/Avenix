@@ -29,7 +29,7 @@ import { BotLogsPanel } from "@/components/dashboard/bot-logs-panel";
 
 type Service = {
   id: string; name: string; planName: string; subscriptionActive: boolean; expiresAt: string | null;
-  bot: { id: string; applicationId: string | null; guildId: string | null; guildName?: string | null; guildIcon?: string | null; serverLimit?: number; status: string; observedStatus?: string; lastPingAt?: string | null; tokenConfigured: boolean } | null;
+  bot: { id: string; applicationId: string | null; guildId: string | null; guildName?: string | null; guildIcon?: string | null; serverLimit?: number; status: string; observedStatus?: string; lastPingAt?: string | null; tokenConfigured: boolean; tokenHealth?:string|null } | null;
 };
 
 const icons: Record<string, any> = {
@@ -123,7 +123,7 @@ export default function BotInstanceDashboardPage() {
     {selectedModule.key==="overview"&&<section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><Server className="w-4 h-4"/>Servidor</div><p className="mt-3 text-sm font-semibold break-all">{service.bot?.guildId || "Sin configurar"}</p></div>
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><CreditCard className="w-4 h-4"/>Renovación</div><p className="mt-3 text-sm font-semibold">{service.expiresAt ? new Date(service.expiresAt).toLocaleDateString("es-ES") : "Sin fecha"}</p></div>
-      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><CheckCircle2 className="w-4 h-4"/>Token</div><p className="mt-3 text-sm font-semibold">{service.bot?.tokenConfigured ? "Configurado y cifrado" : "Pendiente"}</p></div>
+      <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><CheckCircle2 className="w-4 h-4"/>Token</div><p className="mt-3 text-sm font-semibold">{service.bot?.tokenHealth==="VALID"?"Válido":service.bot?.tokenHealth==="INVALID"?"Inválido":service.bot?.tokenHealth==="MISMATCH"?"Aplicación incorrecta":service.bot?.tokenHealth==="UNREADABLE"?"No disponible":service.bot?.tokenHealth==="UNAVAILABLE"?"Sin verificar":service.bot?.tokenConfigured?"Configurado":"Pendiente"}</p></div>
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><Clock3 className="w-4 h-4"/>Heartbeat</div><p className="mt-3 text-sm font-semibold">{service.bot?.lastPingAt ? new Date(service.bot.lastPingAt).toLocaleString("es-ES") : "Sin datos"}</p></div>
     </section>}
 
