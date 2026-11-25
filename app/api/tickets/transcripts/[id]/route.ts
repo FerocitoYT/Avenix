@@ -113,13 +113,24 @@ export async function GET(req:Request,{params}:{params:{id:string}}){
  const user=session?await prisma.user.findFirst({where:{id:session.id,isActive:true},select:{id:true,discordId:true}}):null;
  if(!discordId&&!user)return screen("Identifícate con la cuenta de Discord con la que abriste el ticket o con un rango autorizado.",path,401);
  const ticketId=ticketIdFromReference(params.id);
- const record=await prisma.ticketTranscript.findUnique({where:ticketId?{ticketId}:{id:params.id},include:{ticket:{select:{guildId:true,creatorDiscordId:true,creatorId:true}}}});
+ const record=await prisma.ticketTranscript.findUnique({where:ticketId?{ticketId}:{id:params.id},include:{ticket:{select:{guildId:true,creatorDiscordId:true,creatorId:true,guild:{select:{name:true,icon:true}}}}}});
  if(!record)return screen("La transcripción no está disponible o no tienes permiso para verla.",path,404);
  const t=record.ticket;
  const identity=discordId||user?.discordId||null;
  const allowed=(!discordId&&!!user&&t.creatorId===user.id)||(!!identity&&t.creatorDiscordId===identity)||await highRank(t.guildId,identity);
  if(!allowed)return screen("La transcripción no está disponible o esta cuenta no tiene permiso. Puedes identificarte con otra cuenta de Discord.",path,404);
  const reference=ticketReference(record.ticketId);
- const html=record.htmlContent.replace(/Avenix Control/g,"Axyon Control").replace(/Avenix Bot/g,"Axyon Bot").replace(/Avenix Development/g,"Axyon").replace(/ID Ticket: [a-zA-Z0-9_-]+/g,"Expediente: "+reference);
+ const escape=(value:string)=>value.replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]||ch));
+ const guildName=t.guild.name||"Servidor de Discord";
+ let icon="";
+ try{
+  const raw=t.guild.icon||"";
+  if(/^(?:a_)?[a-f0-9]{32}$/i.test(raw))icon="https://cdn.discordapp.com/icons/"+t.guildId+"/"+raw+".png?size=128";
+  else if(raw){const u=new URL(raw);if(u.protocol==="https:"&&["cdn.discordapp.com","media.discordapp.net"].includes(u.hostname)&&u.pathname.startsWith("/icons/"+t.guildId+"/"))icon=u.href;}
+ }catch{}
+ const avatar=icon?'<img class="guild-avatar" src="'+escape(icon)+'" alt="" />':'<span class="guild-avatar guild-initials">'+escape(guildName.trim().slice(0,2).toUpperCase())+'</span>';
+ const brand='<div class="brand-logo">'+avatar+'<span class="guild-name">'+escape(guildName)+'</span><span class="badge">Expediente oficial</span></div>';
+ const css='<style>.brand-logo{min-width:0;flex-wrap:wrap}.guild-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;border:1px solid #ffffff20}.guild-initials{display:inline-flex;align-items:center;justify-content:center;background:#334155;color:#fff;font-size:16px}.guild-name{overflow-wrap:anywhere}.header-bar{gap:12px;flex-wrap:wrap}@media(max-width:600px){.header-bar{padding:14px 16px}.brand-logo{gap:8px}.guild-name{font-size:16px}}</style>';
+ const html=record.htmlContent.replace(/<div class="brand-logo">[\s\S]*?<\/div>/,()=>brand).replace("</head>",()=>css+"</head>").replace(/ID Ticket: [a-zA-Z0-9_-]+/,()=> "Expediente: "+reference);
  return new NextResponse(html,{headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"private, no-store","Content-Security-Policy":"sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src https://cdn.discordapp.com https://media.discordapp.net; base-uri 'none'; form-action 'none'; frame-ancestors 'none'","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"}});
 }
