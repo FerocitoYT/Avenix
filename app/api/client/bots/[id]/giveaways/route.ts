@@ -6,7 +6,7 @@ import {getCurrentUser} from "@/lib/auth";
 import {encryptSecret,encryptionKeyReady} from "@/lib/crypto";
 export const dynamic="force-dynamic";
 const snow=z.string().regex(/^\d{17,22}$/);
-const prize=z.object({label:z.string().trim().min(1).max(100),mode:z.enum(["MANUAL","TEXT","STOCK"]),text:z.string().max(1500).optional(),sourceId:z.string().max(100).optional(),productKey:z.string().max(200).optional(),quantity:z.number().int().min(1).max(10).default(1)});
+const prize=z.object({label:z.string().trim().min(1).max(100),mode:z.enum(["MANUAL","TEXT","STOCK"]),text:z.string().max(1500).optional(),sourceId:z.string().max(100).optional(),productKey:z.string().max(200).optional(),quantity:z.number().int().min(1).max(10).default(1),deliveryTemplate:z.string().trim().max(1500).optional(),unitPrice:z.number().nonnegative().max(1e8).optional(),currency:z.enum(["EUR","USD","GBP","MXN","ARS","BRL","COP","CLP","CAD","AUD"]).default("EUR")});
 const imageUrl=z.string().trim().max(2048).refine(s=>{if(!s)return true;try{const u=new URL(s);return u.protocol==="https:"&&!u.username&&!u.password;}catch{return false;}},{message:"Introduce una URL HTTPS válida."});
 const schema=z.object({bannerUrl:imageUrl.default(""),thumbnailUrl:imageUrl.default(""),footerIconUrl:imageUrl.default(""),requestId:z.string().uuid().optional(),title:z.string().trim().min(3).max(120),description:z.string().trim().max(1500),channelId:snow,requiredRoleId:z.union([snow,z.literal("")]).optional(),pingRoleId:z.union([snow,z.literal("")]).optional(),color:z.string().regex(/^#[0-9a-fA-F]{6}$/),buttonLabel:z.string().trim().min(1).max(60),duration:z.number().int().min(1).max(43200),footer:z.string().trim().max(200).default("Axyon"),author:z.string().trim().max(100).default(""),logoPosition:z.enum(["NONE","LEFT","RIGHT"]).default("RIGHT"),showTimestamp:z.boolean().default(false),showFooterCount:z.boolean().default(true),insufficientPolicy:z.enum(["UNIQUE","MULTIPLE","EXTEND","CANCEL"]).default("UNIQUE"),minimumParticipants:z.number().int().min(1).max(10000).default(1),extensionMinutes:z.number().int().min(1).max(10080).default(60),maxExtensions:z.number().int().min(1).max(5).default(1),prizes:z.array(prize).min(1).max(20)});
 async function access(id:string){const u=await getCurrentUser();if(!u)return null;const now=new Date();const bot=await prisma.botInstance.findFirst({where:{id,service:{userId:u.id,serviceType:"DISCORD_BOT",status:"ACTIVE",subscriptions:{some:{userId:u.id,status:{in:["ACTIVE","TRIALING"]},currentPeriodStart:{lte:now},currentPeriodEnd:{gt:now}}}}}});return bot?.guildId?{bot,u,guildId:bot.guildId}:null;}
@@ -34,14 +34,15 @@ async function postGiveaway(req:Request,{params}:{params:{id:string}}){
  }
  const parsed=schema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"Revisa los campos del sorteo y los premios."},{status:400});
  const d=parsed.data,id=d.requestId||randomUUID(),key=prefix(a.bot.id)+id;
- if(d.prizes.some(p=>p.mode!=="MANUAL")&&!encryptionKeyReady())return NextResponse.json({error:"La entrega automática no está disponible temporalmente. El equipo técnico debe revisar la configuración."},{status:503});
+ if(d.prizes.some(p=>p.mode!=="MANUAL"||p.deliveryTemplate)&&!encryptionKeyReady())return NextResponse.json({error:"La entrega automática no está disponible temporalmente. El equipo técnico debe revisar la configuración."},{status:503});
  try{await prisma.$transaction(async tx=>{
  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text AS locked`;
  const existing=await tx.setting.findUnique({where:{key},select:{key:true}});if(existing)return;
  const places:any[]=[];
  for(let i=0;i<d.prizes.length;i++){
  const p=d.prizes[i];
- const item:any={label:p.label,mode:p.mode,quantity:p.quantity,delivery:null};
+ const item:any={label:p.label,mode:p.mode,quantity:p.quantity,delivery:null,unitPrice:p.unitPrice??null,currency:p.currency};
+ if(p.deliveryTemplate)item.deliveryTemplate=encryptSecret(p.deliveryTemplate);
  if(p.mode==="TEXT"){if(!p.text?.trim())throw Error("TEXT");const privateText=p.text.trim();const publicFields=[d.title,d.description,d.footer,d.author,d.buttonLabel,d.bannerUrl,d.thumbnailUrl,d.footerIconUrl,...d.prizes.map(x=>x.label)];if(publicFields.some(x=>x.includes(privateText)))throw Error("PUBLIC_SECRET");item.secret=encryptSecret(p.text);}
  if(p.mode==="STOCK"){
  if(!p.sourceId||!p.productKey)throw Error("STOCK");
