@@ -31,6 +31,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
   const botId = botIdOverride || pathname.match(/^\/dashboard\/bot\/([^/]+)/)?.[1] || searchParams.get("botId") || "";
   const section =
     pathname === "/dashboard/bots/configuracion" ? "credentials" :
+    pathname === "/dashboard/bots/staff" ? "staff" :
     pathname === "/dashboard/bots/tickets" ? "tickets" :
     pathname === "/dashboard/bots/diagnostico" ? "diagnostics" :
     pathname === "/dashboard/bots/integraciones/historial" ? "deliveries" :
@@ -45,7 +46,7 @@ export function BotManagerShell({ children, botIdOverride }: { children: React.R
   const modules = useMemo(()=>orderedBotDashboardModules(),[]);
   const groups = [
     {title:"General",keys:["overview","credentials"],icon:LayoutDashboard},
-    {title:"Comunidad",keys:["tickets","welcome","verification","studio","invites","polls","voice"],icon:Users},
+    {title:"Comunidad",keys:["staff","tickets","welcome","verification","studio","invites","polls","voice"],icon:Users},
     {title:"Personal",keys:["absences","recruitment","employees"],icon:ClipboardList},
     {title:"Automatización",keys:["automations","scheduled-messages","events","reminders","ai"],icon:Workflow},
     {title:"Integraciones",keys:["integrations","social","deliveries"],icon:ShoppingBag},
