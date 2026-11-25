@@ -3,7 +3,7 @@ import {z} from "zod";
 import {randomUUID} from "node:crypto";
 import {prisma} from "@/lib/prisma";
 import {getCurrentUser} from "@/lib/auth";
-import {encryptSecret} from "@/lib/crypto";
+import {encryptSecret,encryptionKeyReady} from "@/lib/crypto";
 export const dynamic="force-dynamic";
 const snow=z.string().regex(/^\d{17,22}$/);
 const prize=z.object({label:z.string().trim().min(1).max(100),mode:z.enum(["MANUAL","TEXT","STOCK"]),text:z.string().max(1500).optional(),sourceId:z.string().max(100).optional(),productKey:z.string().max(200).optional(),quantity:z.number().int().min(1).max(10).default(1)});
@@ -13,6 +13,7 @@ const prefix=(id:string)=>"web-giveaway:"+id+":";
 function publicRecord(v:any){return {id:v.id,title:v.title,description:v.description,footer:v.footer||"",author:v.author||"",logoPosition:v.logoPosition||"NONE",showTimestamp:!!v.showTimestamp,showFooterCount:v.showFooterCount!==false,channelId:v.channelId,status:v.status,endsAt:v.endsAt,createdAt:v.createdAt,prizes:v.prizes.map((p:any)=>({label:p.label,mode:p.mode,quantity:p.quantity,winner:p.winner||null,delivery:p.delivery||null})),participants:(v.participants||[]).length,lastError:v.lastError||null};}
 export async function GET(_req:Request,{params}:{params:{id:string}}){
  const a=await access(params.id);if(!a)return NextResponse.json({error:"Acceso no autorizado"},{status:403});
+ encryptionKeyReady();
  const [rows,sources]=await Promise.all([prisma.setting.findMany({where:{key:{startsWith:prefix(a.bot.id)}},orderBy:{updatedAt:"desc"},take:100}),prisma.deliverySource.findMany({where:{botId:a.bot.id,enabled:true},select:{id:true,name:true,stockItems:{where:{status:"AVAILABLE"},select:{productKey:true}}}})]);
  const stock=sources.flatMap(s=>{const counts=new Map<string,number>();for(const i of s.stockItems)counts.set(i.productKey,(counts.get(i.productKey)||0)+1);return Array.from(counts,([productKey,available])=>({sourceId:s.id,sourceName:s.name,productKey,available}));});
  return NextResponse.json({giveaways:rows.map(r=>publicRecord(JSON.parse(r.value))),stock},{headers:{"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache"}});
@@ -32,6 +33,7 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
  }
  const parsed=schema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"Revisa los campos del sorteo y los premios."},{status:400});
  const d=parsed.data,id=randomUUID(),key=prefix(a.bot.id)+id;
+ if(d.prizes.some(p=>p.mode!=="MANUAL")&&!encryptionKeyReady())return NextResponse.json({error:"La entrega automática no está disponible temporalmente. El equipo técnico debe revisar la configuración."},{status:503});
  try{await prisma.$transaction(async tx=>{
  const places:any[]=[];
  for(let i=0;i<d.prizes.length;i++){

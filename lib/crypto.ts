@@ -4,9 +4,20 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
+let encryptionAlertLogged = false;
+export function encryptionKeyReady(): boolean {
+  const secret = process.env.ENCRYPTION_MASTER_KEY;
+  const valid = typeof secret === 'string' && secret.trim().length >= 32;
+  if (!valid && !encryptionAlertLogged) {
+    encryptionAlertLogged = true;
+    console.error('[CRITICAL][Encryption] ENCRYPTION_MASTER_KEY ausente o inválida. Operaciones de cifrado bloqueadas.');
+  }
+  if (valid) encryptionAlertLogged = false;
+  return valid;
+}
 function getMasterKey(): Buffer {
   const secret = process.env.ENCRYPTION_MASTER_KEY;
-  if (!secret || secret.length < 32) throw new Error('ENCRYPTION_MASTER_KEY debe configurarse con al menos 32 caracteres');
+  if (!encryptionKeyReady() || !secret) throw new Error('ENCRYPTION_MASTER_KEY debe configurarse con al menos 32 caracteres');
   return crypto.createHash('sha256').update(secret).digest();
 }
 
