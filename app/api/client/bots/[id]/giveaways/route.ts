@@ -34,7 +34,8 @@ export async function POST(req:Request,{params}:{params:{id:string}}){
  const d=parsed.data,id=randomUUID(),key=prefix(a.bot.id)+id;
  try{await prisma.$transaction(async tx=>{
  const places:any[]=[];
- for(const [i,p] of d.prizes.entries()){
+ for(let i=0;i<d.prizes.length;i++){
+ const p=d.prizes[i];
  const item:any={label:p.label,mode:p.mode,quantity:p.quantity,delivery:null};
  if(p.mode==="TEXT"){if(!p.text?.trim())throw Error("TEXT");const privateText=p.text.trim();const publicFields=[d.title,d.description,d.footer,d.author,d.buttonLabel,...d.prizes.map(x=>x.label)];if(publicFields.some(x=>x.includes(privateText)))throw Error("PUBLIC_SECRET");item.secret=encryptSecret(p.text);}
  if(p.mode==="STOCK"){
