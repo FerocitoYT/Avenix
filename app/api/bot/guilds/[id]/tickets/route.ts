@@ -7,11 +7,13 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 const snowflake = z.string().regex(/^\d{17,22}$/, "Introduce un ID válido de Discord");
 const optionalUrl = z.union([z.string().url().max(2000).refine(v => v.startsWith("https://"), "Solo HTTPS"), z.literal("")]).optional();
+const appearanceSchema=z.object({content:z.string().max(2000).default(""),placeholder:z.string().trim().min(1).max(150).default("Elige el tipo de ticket"),buttonStyle:z.enum(["Primary","Secondary","Success","Danger"]).default("Primary"),authorName:z.string().max(256).default(""),authorIcon:optionalUrl,footerIcon:optionalUrl,timestamp:z.boolean().default(false),titleUrl:optionalUrl,embedEnabled:z.boolean().default(true)}).default({});
 const panelSchema = z.object({
+  appearance:appearanceSchema,
   id: z.string().optional(),
   channelId: snowflake,
-  title: z.string().trim().min(1).max(256),
-  description: z.string().trim().min(1).max(4000),
+  title: z.string().trim().max(256),
+  description: z.string().trim().max(4000),
   colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   imageUrl: optionalUrl,
   thumbnailUrl: optionalUrl,
@@ -72,7 +74,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       prisma.ticketPanel.findMany({ where: { guildId: params.id }, include: { categories: true }, orderBy: { createdAt: "asc" } }),
       prisma.ticket.findMany({ where: { guildId: params.id }, include: { category: true }, orderBy: { createdAt: "desc" }, take: 30 }),
     ]);
-    return NextResponse.json({ success: true, categories, panels, tickets });
+    const settings=await prisma.setting.findMany({where:{key:{in:panels.map(p=>"tickets:appearance:"+p.id)}}});
+    const enriched=panels.map(p=>{const s=settings.find(v=>v.key==="tickets:appearance:"+p.id);let appearance={};try{if(s)appearance=JSON.parse(s.value)}catch{}return {...p,appearance};});
+    return NextResponse.json({ success: true, categories, panels:enriched, tickets });
   } catch (error) {
     console.error("[Tickets] Error al cargar la configuración", error);
     return NextResponse.json({ error: "No se pudo cargar la configuración de tickets" }, { status: 500 });
@@ -90,15 +94,18 @@ async function handlePOST(req: Request, { params }: { params: { id: string } }) 
     if (body.action === "SAVE_PANEL") {
       const result = panelSchema.safeParse(body.panel);
       if (!result.success) return invalid(result.error);
-      const { id, ...fields } = result.data;
+      const { id, appearance, ...fields } = result.data;
+      if(!appearance.embedEnabled&&!appearance.content.trim())return NextResponse.json({error:"Escribe un mensaje si desactivas el embed."},{status:400});
+      if(appearance.embedEnabled&&!fields.title&&!fields.description&&!fields.imageUrl&&!fields.thumbnailUrl&&!fields.footerText&&!appearance.authorName)return NextResponse.json({error:"El embed no puede estar vacío."},{status:400});
+      if(appearance.embedEnabled&&fields.title.length+fields.description.length+(fields.footerText||"").length+appearance.authorName.length>6000)return NextResponse.json({error:"El embed supera los 6000 caracteres."},{status:400});
       const data = { ...fields, imageUrl: fields.imageUrl || null, thumbnailUrl: fields.thumbnailUrl || null, footerText: fields.footerText || null };
       if (id) {
         const existing = await prisma.ticketPanel.findFirst({ where: { id, guildId } });
         if (!existing) return NextResponse.json({ error: "Panel no encontrado" }, { status: 404 });
-        const panel = await prisma.ticketPanel.update({ where: { id }, data });
+        const panel = await prisma.$transaction(async tx=>{const p=await tx.ticketPanel.update({where:{id},data});const key="tickets:appearance:"+p.id;await tx.setting.upsert({where:{key},create:{key,value:JSON.stringify(appearance),category:"TICKETS",isPublic:false},update:{value:JSON.stringify(appearance),isPublic:false}});return p;});
         return NextResponse.json({ success: true, panel, message: "Panel guardado. Discloud actualizará el embed en Discord." });
       }
-      const panel = await prisma.ticketPanel.create({ data: { guildId, ...data } });
+      const panel=await prisma.$transaction(async tx=>{const p=await tx.ticketPanel.create({data:{guildId,...data}});await tx.setting.create({data:{key:"tickets:appearance:"+p.id,value:JSON.stringify(appearance),category:"TICKETS",isPublic:false}});return p;});
       return NextResponse.json({ success: true, panel, message: "Panel guardado. Se publicará cuando haya categorías asociadas." });
     }
 
