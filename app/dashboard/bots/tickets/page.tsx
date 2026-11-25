@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TranscriptAccess from "@/components/dashboard/transcript-access";
 import { useSearchParams } from "next/navigation";
 
 type Panel = { id?: string; channelId:string; title:string; description:string; colorHex:string; imageUrl:string; thumbnailUrl:string; footerText:string; componentType:"BUTTON"|"SELECT"; messageId?:string|null };
@@ -65,6 +66,7 @@ export default function TicketSettings(){
   </div>
   {error&&<p role="alert" className="rounded-lg bg-red-950 border border-red-700 p-3 text-red-300">{error}</p>}
   {notice&&<p role="status" className="rounded-lg bg-emerald-950 border border-emerald-700 p-3 text-emerald-300">{notice}</p>}
+  {guildId&&<TranscriptAccess key={guildId} guildId={guildId}/>}
   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
    <section className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
     <div className="flex items-center justify-between"><h2 className="text-lg font-bold">1. Embed y canal del panel</h2><button onClick={()=>setPanel(panelDefault())} className="text-indigo-400 text-sm">+ Nuevo</button></div>
