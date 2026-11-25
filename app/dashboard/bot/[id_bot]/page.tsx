@@ -3,6 +3,7 @@ import {RestartBotButton} from "@/components/dashboard/restart-bot-button";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BotReviewPanel } from "@/components/dashboard/bot-review-panel";
 import {BotTokenWarning} from "@/components/dashboard/bot-token-warning";
 import { useParams, useSearchParams } from "next/navigation";
 import {
@@ -129,6 +130,7 @@ export default function BotInstanceDashboardPage() {
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-5"><div className="flex items-center gap-2 text-xs text-slate-400"><Clock3 className="w-4 h-4"/>Heartbeat</div><p className="mt-3 text-sm font-semibold">{service.bot?.lastPingAt ? new Date(service.bot.lastPingAt).toLocaleString("es-ES") : "Sin datos"}</p></div>
     </section>}
 
+    {selectedModule.key==="overview"&&<BotReviewPanel botId={botId}/>}
     <section className="min-w-0 space-y-5">
       <div className="rounded-2xl border border-slate-800 bg-[#111827] p-6">
         <div className="flex items-start gap-4">
