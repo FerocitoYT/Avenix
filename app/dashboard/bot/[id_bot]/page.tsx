@@ -174,7 +174,7 @@ export default function BotInstanceDashboardPage() {
           ) : selectedModule.key === "employees" && service.bot?.guildId ? (
             <BotEmployeesPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "automations" && service.bot?.guildId ? (
-            <BotAutomationsPanel guildId={service.bot.guildId} />
+            <BotAutomationsPanel guildId={service.bot.guildId} botId={botId} />
           ) : selectedModule.key === "analytics" && service.bot?.guildId ? (
             <BotAnalyticsPanel guildId={service.bot.guildId} />
           ) : selectedModule.key === "scheduled-messages" && service.bot?.guildId ? (
