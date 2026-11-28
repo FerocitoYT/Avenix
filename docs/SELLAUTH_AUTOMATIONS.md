@@ -9,7 +9,7 @@ Incluye:
 - Configuración opcional del slug de tienda mediante `X-STORE`.
 - Comprobación de conexión y lectura de catálogo (hasta 100 productos por consulta).
 - Productos y variantes del catálogo disponibles en el editor de acciones.
-- Disparador de comando slash personalizado, registrado al iniciar el bot.\n- Acción `SELLAUTH_PRODUCT_REQUEST`: selector de catálogo con paginación, selección múltiple y formulario de cantidades.\n- Acción `REQUEST_APPROVAL`: envío a un canal, botones de aprobar/rechazar, roles autorizados, control de doble resolución y persistencia de solicitudes.\n- Acción `SELLAUTH_CREATE_COUPON`: creación del cupón después de la aprobación, usando los productos/variantes seleccionados en el formulario.
+- Disparador de comando slash personalizado, registrado al iniciar el bot.\n- Acción `SELLAUTH_PRODUCT_REQUEST`: selector de catálogo con paginación, selección múltiple y formulario de cantidades. El administrador puede limitar los productos disponibles y elegir si el destinatario es quien ejecuta el comando, otro usuario Discord, un correo o ambos.\n- Acción `REQUEST_APPROVAL`: envío a un canal, botones de aprobar/rechazar, roles autorizados, control de doble resolución y persistencia de solicitudes.\n- Acción `SELLAUTH_CREATE_COUPON`: creación del cupón después de la aprobación, usando los productos/variantes seleccionados en el formulario.
 - Ámbito de tienda completa o restricción a productos/variantes.
 - Código manual o aleatorio, tipo/importe de descuento, límite de usos y caducidad.
 - Comprobación de permisos de instancia/suscripción en las rutas del panel.
