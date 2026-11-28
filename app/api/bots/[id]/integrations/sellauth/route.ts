@@ -123,6 +123,7 @@ export async function PUT(request: Request, { params }: Context) {
   });
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Configuración inválida", fields: parsed.error.flatten().fieldErrors }, { status: 400 });
+  if (parsed.data.apiKey && !process.env.ENCRYPTION_MASTER_KEY) return NextResponse.json({ error: "Falta ENCRYPTION_MASTER_KEY en el servidor." }, { status: 503 });
   const old = await readConfig(params.id);
   if (!parsed.data.apiKey && !old?.apiKeyEncrypted) return NextResponse.json({ error: "Introduce la API Key de SellAuth." }, { status: 400 });
   const config = {
