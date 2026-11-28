@@ -138,8 +138,13 @@ export async function POST(request: Request, { params }: Context) {
       return NextResponse.json({ success: true, message: "Conexión con SellAuth verificada." });
     }
     if (operation.data.operation === "products") {
-      const result = await sellAuthRequest(apiKey, storeSlug, "/v2/products?limit=100&with_drafts=true");
-      const products = Array.isArray(result?.data) ? result.data : [];
+      const products: any[] = [];
+      let lastPage = 1;
+      for (let page = 1; page <= Math.min(lastPage, 50); page++) {
+        const result = await sellAuthRequest(apiKey, storeSlug, `/v2/products?limit=100&page=${page}&with_drafts=true`);
+        if (Array.isArray(result?.data)) products.push(...result.data);
+        lastPage = Math.max(1, Number(result?.meta?.last_page) || 1);
+      }
       return NextResponse.json({ success: true, products: products.map((product: any) => ({
         id: String(product.id ?? ""),
         name: String(product.title ?? "Producto sin nombre"),
