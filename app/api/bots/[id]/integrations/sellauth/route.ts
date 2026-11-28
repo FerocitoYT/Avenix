@@ -43,14 +43,14 @@ async function authorize(botId: string) {
 async function readConfig(botId: string) {
   const row = await prisma.setting.findUnique({ where: { key: settingKey(botId) } });
   if (!row) return null;
-  try { return JSON.parse(row.value) as { apiKeyEncrypted: string; enabled: boolean; storeName: string; lastValidatedAt?: string | null }; }
+  try { return JSON.parse(row.value) as { apiKeyEncrypted: string; enabled: boolean; storeSlug?: string; lastValidatedAt?: string | null }; }
   catch { return null; }
 }
 
 async function sellAuthRequest(apiKey: string, path: string, init: RequestInit = {}) {
   const response = await fetch(`https://api.sellauth.com${path}`, {
     ...init,
-    headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}`, ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers },
+    headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}`, ...(storeSlug ? { "X-STORE": storeSlug } : {}), ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers },
     cache: "no-store",
     signal: AbortSignal.timeout(12000),
   });
@@ -82,7 +82,7 @@ export async function GET(_request: Request, { params }: Context) {
   return NextResponse.json({
     configured: Boolean(config.apiKeyEncrypted),
     enabled: Boolean(config.enabled),
-    storeName: config.storeName || "",
+    storeSlug: config.storeSlug || "",
     maskedKey,
     lastValidatedAt: config.lastValidatedAt || null,
   });
@@ -93,7 +93,7 @@ export async function PUT(request: Request, { params }: Context) {
   if (access.error) return access.error;
   const schema = z.object({
     apiKey: z.string().trim().min(12).max(500).optional().or(z.literal("")),
-    storeName: z.string().trim().max(100).default(""),
+    storeSlug: z.string().trim().max(100).regex(/^[a-z0-9-]*$/).default(""),
     enabled: z.boolean().default(true),
   });
   const parsed = schema.safeParse(await request.json().catch(() => null));
@@ -102,7 +102,7 @@ export async function PUT(request: Request, { params }: Context) {
   if (!parsed.data.apiKey && !old?.apiKeyEncrypted) return NextResponse.json({ error: "Introduce la API Key de SellAuth." }, { status: 400 });
   const config = {
     apiKeyEncrypted: parsed.data.apiKey ? encryptSecret(parsed.data.apiKey) : old!.apiKeyEncrypted,
-    storeName: parsed.data.storeName,
+    storeSlug: parsed.data.storeSlug,
     enabled: parsed.data.enabled,
     lastValidatedAt: old?.lastValidatedAt || null,
   };
@@ -123,7 +123,7 @@ export async function POST(request: Request, { params }: Context) {
   try {
     const apiKey = await getApiKey(params.id);
     if (operation.data.operation === "test") {
-      await sellAuthRequest(apiKey, "/v1/products?limit=1");
+      const config = await readConfig(params.id);\n      await sellAuthRequest(apiKey, config?.storeSlug || "", "/v2/products?limit=1");
       const config = await readConfig(params.id);
       if (config) await prisma.setting.update({ where: { key: settingKey(params.id) }, data: { value: JSON.stringify({ ...config, lastValidatedAt: new Date().toISOString() }) } });
       return NextResponse.json({ success: true, message: "Conexión con SellAuth verificada." });
@@ -140,7 +140,7 @@ export async function POST(request: Request, { params }: Context) {
     if (!operation.data.coupon) return NextResponse.json({ error: "Faltan los datos del cupón." }, { status: 400 });
     const coupon = couponSchema.safeParse(operation.data.coupon);
     if (!coupon.success) return NextResponse.json({ error: "Datos del cupón inválidos.", fields: coupon.error.flatten().fieldErrors }, { status: 400 });
-    const result = await sellAuthRequest(apiKey, "/v1/coupons", { method: "POST", body: JSON.stringify(coupon.data) });
+    const config = await readConfig(params.id);\n    const result = await sellAuthRequest(apiKey, config?.storeSlug || "", "/v2/coupons", { method: "POST", body: JSON.stringify({ ...coupon.data, products: coupon.data.products.map(Number), product_variants: coupon.data.product_variants.map(Number) }) });
     return NextResponse.json({ success: true, coupon: result });
   } catch (error) {
     const status = typeof error === "object" && error && "status" in error ? Number((error as any).status) : 502;
