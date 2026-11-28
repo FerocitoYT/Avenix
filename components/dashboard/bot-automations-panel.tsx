@@ -142,6 +142,7 @@ export function BotAutomationsPanel({ guildId, botId }: { guildId: string; botId
           <p className="text-xs text-slate-500">Las acciones que estén después de este bloque no se ejecutarán hasta que un miembro autorizado apruebe la solicitud.</p>
         </div>}
         {item.type === "SELLAUTH_CREATE_COUPON" && <div className="space-y-3 rounded-xl bg-slate-950/60 p-3">
+          <label className="block text-xs text-slate-300">Canal de registro (opcional)<input className={field} value={item.targetId || ""} onChange={event => action(index, { targetId: event.target.value })} placeholder="ID del canal donde registrar el cupón"/></label>
           <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-white">Configuración del cupón</p><button className="text-xs text-blue-300" disabled={busy} onClick={() => void loadCatalog().catch(error => setMessage(error instanceof Error ? error.message : "Error cargando catálogo."))}>Actualizar catálogo</button></div>
           <label className="block text-xs text-slate-300">Código (vacío = código aleatorio)<input className={field} maxLength={64} value={item.payload?.code || ""} onChange={event => updatePayload(index, { code: event.target.value })} placeholder="BIENVENIDA-{user.id}"/></label>
           <div className="grid gap-2 sm:grid-cols-2">
