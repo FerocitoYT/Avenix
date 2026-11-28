@@ -18,11 +18,18 @@ const couponSchema = z.object({
   limit: z.number().int().positive().max(100000).nullable().optional(),
   expires_at: z.string().datetime().nullable().optional(),
   minimum_amount: z.number().min(1).nullable().optional(),
+  maximum_discount_amount: z.number().min(1).nullable().optional(),
   applies_to: z.enum(["one_time", "subscriptions"]).default("one_time"),
   subscription_payments: z.number().int().min(1).max(36).nullable().optional(),
 }).superRefine((value, ctx) => {
   if (value.type === "PERCENTAGE" && value.discount > 100) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount"], message: "El porcentaje no puede superar el 100%." });
+  }
+  if (value.maximum_discount_amount != null && value.type !== "PERCENTAGE") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["maximum_discount_amount"], message: "El límite máximo solo se admite para descuentos porcentuales." });
+  }
+  if (value.maximum_discount_amount != null && Math.round(value.maximum_discount_amount * 100) !== value.maximum_discount_amount * 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["maximum_discount_amount"], message: "El límite máximo admite como máximo dos decimales." });
   }
   if (value.applies_to === "subscriptions" && !value.subscription_payments) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["subscription_payments"], message: "Indica cuántos pagos de la suscripción tendrán descuento." });
