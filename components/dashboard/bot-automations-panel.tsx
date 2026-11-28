@@ -88,7 +88,8 @@ export function BotAutomationsPanel({ guildId, botId }: { guildId: string; botId
       <select aria-label="Evento" className={field} value={draft.event} onChange={event => { const nextEvent = event.target.value; setDraft({ ...draft, event: nextEvent, conditions: nextEvent === "SLASH_COMMAND" ? [...draft.conditions.filter(condition => condition.field !== "command.name"), { field: "command.name", operator: "EQUALS", value: "solicitar-cupon" }] : draft.conditions.filter(condition => condition.field !== "command.name") }); }}>
         <option value="MEMBER_JOIN">Cuando entra un miembro</option>
         <option value="MESSAGE_SENT">Cuando se recibe un mensaje</option>
-        <option value="MEMBER_LEAVE">Cuando sale un miembro</option>\n        <option value="SLASH_COMMAND">Cuando se ejecuta un comando personalizado</option>
+        <option value="MEMBER_LEAVE">Cuando sale un miembro</option>
+        <option value="SLASH_COMMAND">Cuando se ejecuta un comando personalizado</option>
       </select>
       <p className="text-xs text-slate-500">Los comandos slash personalizados se registran al iniciar el bot. Los disparadores de botones y formularios se ampliarán con nuevos bloques.</p>
     </section>
