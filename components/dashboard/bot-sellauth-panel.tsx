@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, CircleAlert, Loader2, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 
 type Product = { id: string; name: string; variants: { id: string; name: string }[] };
-type Config = { configured: boolean; enabled: boolean; storeName: string; maskedKey?: string; lastValidatedAt?: string | null };
+type Config = { configured: boolean; enabled: boolean; storeSlug: string; maskedKey?: string; lastValidatedAt?: string | null };
 
 export function BotSellAuthPanel({ botId }: { botId: string }) {
   const endpoint = `/api/bots/${encodeURIComponent(botId)}/integrations/sellauth`;
-  const [config, setConfig] = useState<Config>({ configured: false, enabled: true, storeName: "" });
+  const [config, setConfig] = useState<Config>({ configured: false, enabled: true, storeSlug: "" });
   const [apiKey, setApiKey] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [message, setMessage] = useState("");
@@ -32,7 +32,7 @@ export function BotSellAuthPanel({ botId }: { botId: string }) {
   async function save() {
     setBusy(true); setError(""); setMessage("");
     try {
-      const response = await fetch(endpoint, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey, storeName: config.storeName, enabled: config.enabled }) });
+      const response = await fetch(endpoint, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey, storeSlug: config.storeSlug, enabled: config.enabled }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo guardar.");
       setApiKey(""); setMessage(data.message || "Configuración guardada."); await load();
@@ -76,7 +76,7 @@ export function BotSellAuthPanel({ botId }: { botId: string }) {
         <div><h3 className="text-lg font-bold text-white">SellAuth</h3><p className="mt-1 text-sm text-slate-400">Conecta tu tienda para utilizar sus productos y crear cupones desde Automatizaciones.</p></div>
         <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${config.configured && config.enabled ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-slate-700 bg-slate-900 text-slate-400"}`}>{config.configured ? config.enabled ? "Conectado" : "Desactivado" : "Sin configurar"}</span>
       </div>
-      <label className="block text-sm text-slate-300">Nombre de la tienda<input className={field} maxLength={100} value={config.storeName} onChange={event => setConfig({ ...config, storeName: event.target.value })} placeholder="Mi tienda"/></label>
+      <label className="block text-sm text-slate-300">Slug de la tienda<input className={field} maxLength={100} value={config.storeSlug} onChange={event => setConfig({ ...config, storeSlug: event.target.value })} placeholder="mi-tienda"/></label>
       <label className="block text-sm text-slate-300">API Key de SellAuth<input className={field} type="password" autoComplete="new-password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={config.configured ? "Deja vacío para mantener la clave guardada" : "Introduce tu API Key"}/></label>
       {config.maskedKey && <p className="text-xs text-slate-500">Clave almacenada: <span className="font-mono">{config.maskedKey}</span></p>}
       <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={config.enabled} onChange={event => setConfig({ ...config, enabled: event.target.checked })}/>Activar integración</label>
