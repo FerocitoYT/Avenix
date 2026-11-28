@@ -85,19 +85,19 @@ export function BotAutomationsPanel({ guildId, botId }: { guildId: string; botId
 
     <section className={card}>
       <h3 className="font-bold text-blue-300">1 · Disparador</h3>
-      <select aria-label="Evento" className={field} value={draft.event} onChange={event => setDraft({ ...draft, event: event.target.value })}>
+      <select aria-label="Evento" className={field} value={draft.event} onChange={event => { const nextEvent = event.target.value; setDraft({ ...draft, event: nextEvent, conditions: nextEvent === "SLASH_COMMAND" ? [...draft.conditions.filter(condition => condition.field !== "command.name"), { field: "command.name", operator: "EQUALS", value: "solicitar-cupon" }] : draft.conditions.filter(condition => condition.field !== "command.name") }); }}>
         <option value="MEMBER_JOIN">Cuando entra un miembro</option>
         <option value="MESSAGE_SENT">Cuando se recibe un mensaje</option>
-        <option value="MEMBER_LEAVE">Cuando sale un miembro</option>
+        <option value="MEMBER_LEAVE">Cuando sale un miembro</option>\n        <option value="SLASH_COMMAND">Cuando se ejecuta un comando personalizado</option>
       </select>
-      <p className="text-xs text-slate-500">Los disparadores de comandos, botones y formularios interactivos se incorporarán como disparadores configurables del motor.</p>
+      <p className="text-xs text-slate-500">Los comandos slash personalizados se registran al iniciar el bot. Los disparadores de botones y formularios se ampliarán con nuevos bloques.</p>
     </section>
 
     <section className={card}>
       <h3 className="font-bold text-amber-300">2 · Condiciones</h3>
       <p className="text-xs text-slate-400">Todas las condiciones deben cumplirse. Puedes combinarlas para limitar cuándo se ejecuta el flujo.</p>
       {draft.conditions.map((item, index) => <div key={index} className="grid gap-2 sm:grid-cols-3">
-        <select aria-label="Campo" className={field} value={item.field} onChange={event => condition(index, { field: event.target.value })}>{["user.id", "user.tag", "user.accountAgeDays", "message.content", "message.channelId", "member"].map(value => <option key={value}>{value}</option>)}</select>
+        <select aria-label="Campo" className={field} value={item.field} onChange={event => condition(index, { field: event.target.value })}>{["user.id", "user.tag", "user.accountAgeDays", "message.content", "message.channelId", "member", "command.name"].map(value => <option key={value}>{value}</option>)}</select>
         <select aria-label="Operador" className={field} value={item.operator} onChange={event => condition(index, { operator: event.target.value })}>{["EQUALS", "NOT_EQUALS", "CONTAINS", "STARTS_WITH", "ENDS_WITH", "GREATER_THAN", "LESS_THAN", "HAS_ROLE"].map(value => <option key={value}>{value}</option>)}</select>
         <input aria-label="Valor" className={field} value={item.value} onChange={event => condition(index, { value: event.target.value })}/>
         <button className="text-left text-xs text-red-300" onClick={() => setDraft({ ...draft, conditions: draft.conditions.filter((_, i) => i !== index) })}>Eliminar condición</button>
@@ -110,17 +110,24 @@ export function BotAutomationsPanel({ guildId, botId }: { guildId: string; botId
       {draft.actions.map((item, index) => <div key={index} className="space-y-2 rounded-xl border border-slate-700 p-3">
         <select aria-label="Acción" className={field} value={item.type} onChange={event => {
           const type = event.target.value;
-          action(index, { type, targetId: type === "SEND_DM" ? undefined : item.targetId, payload: type.startsWith("SEND_") ? { content: "" } : type === "SELLAUTH_CREATE_COUPON" ? { discountType: "PERCENTAGE", discount: 10, storeWide: false, products: [], productVariants: [], limit: 1 } : {} });
+          action(index, { type, targetId: type === "SEND_DM" ? undefined : item.targetId, payload: type.startsWith("SEND_") ? { content: "" } : type === "SELLAUTH_CREATE_COUPON" ? { discountType: "PERCENTAGE", discount: 10, storeWide: false, products: [], productVariants: [], limit: 1 } : type === "REQUEST_APPROVAL" ? { staffRoleIds: [], title: "Solicitud pendiente de aprobación", description: "Solicitud de {user.tag}" } : {} });
           if (type === "SELLAUTH_CREATE_COUPON" && !catalogLoaded) void loadCatalog().catch(error => setMessage(error instanceof Error ? error.message : "No se pudo cargar SellAuth."));
         }}>
           <option value="SEND_CHANNEL_MESSAGE">Enviar mensaje a un canal</option>
           <option value="SEND_DM">Enviar mensaje privado</option>
           <option value="ADD_ROLE">Asignar rol</option>
           <option value="REMOVE_ROLE">Retirar rol</option>
-          <option value="SELLAUTH_CREATE_COUPON">SellAuth · Crear cupón</option>
+          <option value="SELLAUTH_CREATE_COUPON">SellAuth · Crear cupón</option>\n          <option value="REQUEST_APPROVAL">Solicitar aprobación del staff</option>
         </select>
-        {["SEND_CHANNEL_MESSAGE", "ADD_ROLE", "REMOVE_ROLE"].includes(item.type) && <input aria-label="ID del canal o rol" placeholder="ID del canal o rol" className={field} value={item.targetId || ""} onChange={event => action(index, { targetId: event.target.value })}/>}
+        {["SEND_CHANNEL_MESSAGE", "ADD_ROLE", "REMOVE_ROLE", "REQUEST_APPROVAL"].includes(item.type) && <input aria-label="ID del canal o rol" placeholder={item.type === "REQUEST_APPROVAL" ? "ID del canal de revisión" : item.type === "SEND_CHANNEL_MESSAGE" ? "ID del canal" : "ID del rol"} className={field} value={item.targetId || ""} onChange={event => action(index, { targetId: event.target.value })}/> }
         {item.type.startsWith("SEND_") && <textarea aria-label="Mensaje" className={field} maxLength={1800} value={item.payload?.content || ""} onChange={event => updatePayload(index, { content: event.target.value })}/>}
+        {item.type === "REQUEST_APPROVAL" && <div className="space-y-2 rounded-xl bg-slate-950/60 p-3">
+          <p className="text-sm font-semibold text-white">Revisión humana</p>
+          <label className="block text-xs text-slate-300">Roles autorizados (IDs separados por comas)<input className={field} value={(item.payload?.staffRoleIds || []).join(", ")} onChange={event => updatePayload(index, { staffRoleIds: event.target.value.split(",").map((value: string) => value.trim()).filter(Boolean) })} placeholder="123456789012345678, 987654321098765432"/></label>
+          <label className="block text-xs text-slate-300">Título de la solicitud<input className={field} maxLength={256} value={item.payload?.title || ""} onChange={event => updatePayload(index, { title: event.target.value })}/></label>
+          <label className="block text-xs text-slate-300">Descripción<input className={field} maxLength={1500} value={item.payload?.description || ""} onChange={event => updatePayload(index, { description: event.target.value })} placeholder="Solicitud de {user.tag}"/></label>
+          <p className="text-xs text-slate-500">Las acciones que estén después de este bloque no se ejecutarán hasta que un miembro autorizado apruebe la solicitud.</p>
+        </div>}
         {item.type === "SELLAUTH_CREATE_COUPON" && <div className="space-y-3 rounded-xl bg-slate-950/60 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-white">Configuración del cupón</p><button className="text-xs text-blue-300" disabled={busy} onClick={() => void loadCatalog().catch(error => setMessage(error instanceof Error ? error.message : "Error cargando catálogo."))}>Actualizar catálogo</button></div>
           <label className="block text-xs text-slate-300">Código (vacío = código aleatorio)<input className={field} maxLength={64} value={item.payload?.code || ""} onChange={event => updatePayload(index, { code: event.target.value })} placeholder="BIENVENIDA-{user.id}"/></label>
@@ -138,7 +145,7 @@ export function BotAutomationsPanel({ guildId, botId }: { guildId: string; botId
           <label className="block text-xs text-slate-300">Mensaje al crear el cupón<input className={field} maxLength={1500} value={item.payload?.successMessage || ""} onChange={event => updatePayload(index, { successMessage: event.target.value })} placeholder="Cupón creado: {coupon.code}"/></label>
           {!catalogLoaded && <p className="text-xs text-amber-300">Carga el catálogo de SellAuth para seleccionar productos y variantes.</p>}
         </div>}
-        <button disabled={draft.actions.length === 1} className="text-xs text-red-300 disabled:opacity-40" onClick={() => setDraft({ ...draft, actions: draft.actions.filter((_, i) => i !== index) })}>Eliminar acción</button>
+        <div className="flex flex-wrap gap-3"><button disabled={index === 0} className="text-xs text-slate-300 disabled:opacity-40" onClick={() => setDraft({ ...draft, actions: draft.actions.map((action, i, all) => i === index - 1 ? all[index] : i === index ? all[index - 1] : action) })}>Subir</button><button disabled={index === draft.actions.length - 1} className="text-xs text-slate-300 disabled:opacity-40" onClick={() => setDraft({ ...draft, actions: draft.actions.map((action, i, all) => i === index ? all[index + 1] : i === index + 1 ? all[index] : action) })}>Bajar</button><button disabled={draft.actions.length === 1} className="text-xs text-red-300 disabled:opacity-40" onClick={() => setDraft({ ...draft, actions: draft.actions.filter((_, i) => i !== index) })}>Eliminar acción</button></div>
       </div>)}
       <button disabled={draft.actions.length >= 5} onClick={() => setDraft({ ...draft, actions: [...draft.actions, { type: "SEND_DM", payload: { content: "" } }] })} className="text-sm text-blue-300 disabled:opacity-40">+ Añadir acción</button>
       <p className="text-xs text-slate-500">Variables disponibles: {"{user.id}"}, {"{user.tag}"}, {"{message.content}"}. El límite de usos del cupón no equivale a unidades máximas por pedido.</p>
