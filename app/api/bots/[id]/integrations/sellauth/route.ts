@@ -8,20 +8,22 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const settingKey = (botId: string) => `integration:sellauth:${botId}`;
-const snowflake = z.string().regex(/^\\d{17,22}$/);
 const couponSchema = z.object({
-  code: z.string().trim().min(3).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  code: z.string().trim().min(3).max(255).regex(/^[A-Za-z0-9_-]+$/),
   type: z.enum(["PERCENTAGE", "AMOUNT"]),
-  discount: z.number().positive(),
+  discount: z.number().min(1),
   store_wide: z.boolean().default(false),
-  products: z.array(z.string().min(1)).max(100).default([]),
-  product_variants: z.array(z.string().min(1)).max(200).default([]),
-  limit: z.number().int().positive().max(100000).optional(),
-  expires_at: z.string().datetime().optional(),
-  minimum_amount: z.number().nonnegative().optional(),
+  products: z.array(z.string().regex(/^\\d+$/)).max(100).default([]),
+  product_variants: z.array(z.string().regex(/^\\d+$/)).max(200).default([]),
+  limit: z.number().int().positive().max(100000).nullable().optional(),
+  expires_at: z.string().datetime().nullable().optional(),
+  minimum_amount: z.number().min(1).nullable().optional(),
 }).superRefine((value, ctx) => {
+  if (value.type === "PERCENTAGE" && value.discount > 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount"], message: "El porcentaje no puede superar el 100%." });
+  }
   if (!value.store_wide && value.products.length === 0) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["products"], message: "Selecciona al menos un producto o activa el ámbito de toda la tienda." });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["products"], message: "Selecciona productos o activa el ámbito de toda la tienda." });
   }
 });
 
@@ -43,14 +45,21 @@ async function authorize(botId: string) {
 async function readConfig(botId: string) {
   const row = await prisma.setting.findUnique({ where: { key: settingKey(botId) } });
   if (!row) return null;
-  try { return JSON.parse(row.value) as { apiKeyEncrypted: string; enabled: boolean; storeSlug?: string; lastValidatedAt?: string | null }; }
-  catch { return null; }
+  try {
+    return JSON.parse(row.value) as { apiKeyEncrypted: string; enabled: boolean; storeSlug?: string; lastValidatedAt?: string | null };
+  } catch { return null; }
 }
 
-async function sellAuthRequest(apiKey: string, path: string, init: RequestInit = {}) {
-  const response = await fetch(`https://api.sellauth.com${path}`, {
+async function sellAuthRequest(apiKey: string, storeSlug: string, path: string, init: RequestInit = {}) {
+  const response = await fetch(`https://sell.app/api${path}`, {
     ...init,
-    headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}`, ...(storeSlug ? { "X-STORE": storeSlug } : {}), ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers },
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      ...(storeSlug ? { "X-STORE": storeSlug } : {}),
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...init.headers,
+    },
     cache: "no-store",
     signal: AbortSignal.timeout(12000),
   });
@@ -67,7 +76,7 @@ async function sellAuthRequest(apiKey: string, path: string, init: RequestInit =
 async function getApiKey(botId: string) {
   const config = await readConfig(botId);
   if (!config?.apiKeyEncrypted || !config.enabled) throw new Error("La integración SellAuth no está configurada o está desactivada.");
-  return decryptSecret(config.apiKeyEncrypted);
+  return { apiKey: decryptSecret(config.apiKeyEncrypted), storeSlug: config.storeSlug || "" };
 }
 
 type Context = { params: { id: string } };
@@ -76,7 +85,7 @@ export async function GET(_request: Request, { params }: Context) {
   const access = await authorize(params.id);
   if (access.error) return access.error;
   const config = await readConfig(params.id);
-  if (!config) return NextResponse.json({ configured: false, enabled: false });
+  if (!config) return NextResponse.json({ configured: false, enabled: false, storeSlug: "" });
   let maskedKey = "••••••••";
   try { maskedKey = maskToken(decryptSecret(config.apiKeyEncrypted)); } catch {}
   return NextResponse.json({
@@ -121,27 +130,30 @@ export async function POST(request: Request, { params }: Context) {
   const operation = z.object({ operation: z.enum(["test", "products", "create-coupon"]), coupon: couponSchema.optional() }).safeParse(body);
   if (!operation.success) return NextResponse.json({ error: "Operación no válida." }, { status: 400 });
   try {
-    const apiKey = await getApiKey(params.id);
+    const { apiKey, storeSlug } = await getApiKey(params.id);
     if (operation.data.operation === "test") {
-      const config = await readConfig(params.id);\n      await sellAuthRequest(apiKey, config?.storeSlug || "", "/v2/products?limit=1");
+      await sellAuthRequest(apiKey, storeSlug, "/v2/products?limit=1");
       const config = await readConfig(params.id);
       if (config) await prisma.setting.update({ where: { key: settingKey(params.id) }, data: { value: JSON.stringify({ ...config, lastValidatedAt: new Date().toISOString() }) } });
       return NextResponse.json({ success: true, message: "Conexión con SellAuth verificada." });
     }
     if (operation.data.operation === "products") {
-      const result = await sellAuthRequest(apiKey, "/v1/products");
-      const products = Array.isArray(result) ? result : Array.isArray(result?.data) ? result.data : Array.isArray(result?.products) ? result.products : [];
+      const result = await sellAuthRequest(apiKey, storeSlug, "/v2/products?limit=100&with_drafts=true");
+      const products = Array.isArray(result?.data) ? result.data : [];
       return NextResponse.json({ success: true, products: products.map((product: any) => ({
-        id: String(product.id ?? product.uuid ?? ""),
-        name: String(product.name ?? product.title ?? "Producto sin nombre"),
-        variants: Array.isArray(product.variants) ? product.variants.map((variant: any) => ({ id: String(variant.id ?? variant.uuid ?? ""), name: String(variant.name ?? variant.title ?? "Variante") })) : [],
+        id: String(product.id ?? ""),
+        name: String(product.title ?? "Producto sin nombre"),
+        variants: Array.isArray(product.variants) ? product.variants.map((variant: any) => ({ id: String(variant.id ?? ""), name: String(variant.title ?? "Variante") })) : [],
       })).filter((product: any) => product.id) });
     }
     if (!operation.data.coupon) return NextResponse.json({ error: "Faltan los datos del cupón." }, { status: 400 });
     const coupon = couponSchema.safeParse(operation.data.coupon);
     if (!coupon.success) return NextResponse.json({ error: "Datos del cupón inválidos.", fields: coupon.error.flatten().fieldErrors }, { status: 400 });
-    const config = await readConfig(params.id);\n    const result = await sellAuthRequest(apiKey, config?.storeSlug || "", "/v2/coupons", { method: "POST", body: JSON.stringify({ ...coupon.data, products: coupon.data.products.map(Number), product_variants: coupon.data.product_variants.map(Number) }) });
-    return NextResponse.json({ success: true, coupon: result });
+    const result = await sellAuthRequest(apiKey, storeSlug, "/v2/coupons", {
+      method: "POST",
+      body: JSON.stringify({ ...coupon.data, products: coupon.data.products.map(Number), product_variants: coupon.data.product_variants.map(Number) }),
+    });
+    return NextResponse.json({ success: true, coupon: result?.data ?? result });
   } catch (error) {
     const status = typeof error === "object" && error && "status" in error ? Number((error as any).status) : 502;
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error conectando con SellAuth." }, { status: status >= 400 && status < 600 ? status : 502 });
