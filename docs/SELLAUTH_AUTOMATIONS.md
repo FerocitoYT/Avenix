@@ -14,7 +14,8 @@ Incluye:
 - Acción `REQUEST_APPROVAL`: envío a un canal, botones de aprobar/rechazar, roles autorizados, control de doble resolución y persistencia de solicitudes.
 - Acción `SELLAUTH_CREATE_COUPON`: creación del cupón después de la aprobación, usando los productos/variantes seleccionados en el formulario.
 - Ámbito de tienda completa o restricción a productos/variantes.
-- Código manual o aleatorio, tipo/importe de descuento, límite de usos y caducidad.
+- Código manual o aleatorio, descuento porcentual o fijo, límite máximo por pedido para porcentajes, compras únicas o suscripciones, pagos descontados, importe mínimo, límite de usos y caducidad.
+- Clave `Idempotency-Key` para reducir duplicados ante reintentos de creación.
 - Comprobación de permisos de instancia/suscripción en las rutas del panel.
 
 ## Configuración
