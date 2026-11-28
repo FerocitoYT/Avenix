@@ -118,7 +118,9 @@ export function BotAutomationsPanel({ guildId, botId }: { guildId: string; botId
           <option value="SEND_DM">Enviar mensaje privado</option>
           <option value="ADD_ROLE">Asignar rol</option>
           <option value="REMOVE_ROLE">Retirar rol</option>
-          <option value="SELLAUTH_CREATE_COUPON">SellAuth · Crear cupón</option>\n          <option value="REQUEST_APPROVAL">Solicitar aprobación del staff</option>\n          <option value="SELLAUTH_PRODUCT_REQUEST">SellAuth · Formulario de productos y cantidades</option>
+          <option value="SELLAUTH_CREATE_COUPON">SellAuth · Crear cupón</option>
+          <option value="REQUEST_APPROVAL">Solicitar aprobación del staff</option>
+          <option value="SELLAUTH_PRODUCT_REQUEST">SellAuth · Formulario de productos y cantidades</option>
         </select>
         {["SEND_CHANNEL_MESSAGE", "ADD_ROLE", "REMOVE_ROLE", "REQUEST_APPROVAL"].includes(item.type) && <input aria-label="ID del canal o rol" placeholder={item.type === "REQUEST_APPROVAL" ? "ID del canal de revisión" : item.type === "SEND_CHANNEL_MESSAGE" ? "ID del canal" : "ID del rol"} className={field} value={item.targetId || ""} onChange={event => action(index, { targetId: event.target.value })}/> }
         {item.type.startsWith("SEND_") && <textarea aria-label="Mensaje" className={field} maxLength={1800} value={item.payload?.content || ""} onChange={event => updatePayload(index, { content: event.target.value })}/>}
