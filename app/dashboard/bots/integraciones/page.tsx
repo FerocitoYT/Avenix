@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {BotSocialPanel} from "@/components/dashboard/bot-social-panel";
+import { BotSellAuthPanel } from "@/components/dashboard/bot-sellauth-panel";
 import { useSearchParams } from "next/navigation";
 
 type Service = { id: string; name: string; subscriptionActive: boolean; bot?: { id: string } | null };
@@ -133,6 +134,7 @@ export default function IntegrationsPage() {
         {services.map(s => <option key={s.id} value={s.bot!.id}>{s.name}</option>)}
       </select>
     </label>
+    {botId && <BotSellAuthPanel botId={botId} />}
     <section className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-3">
       <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Tus tiendas ({stores.length}/10)</h2><button disabled={stores.length >= 10} onClick={() => editStore()} className="rounded-lg bg-indigo-600 disabled:opacity-50 px-4 py-2 text-sm">+ Añadir tienda</button></div>
       {loading && <p className="text-slate-400 text-sm">Cargando tiendas…</p>}
