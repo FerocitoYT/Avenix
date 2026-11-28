@@ -1,0 +1,156 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
+import { decryptSecret, encryptSecret, maskToken } from "@/lib/crypto";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const settingKey = (botId: string) => `integration:sellauth:${botId}`;
+const snowflake = z.string().regex(/^\\d{17,22}$/);
+const couponSchema = z.object({
+  code: z.string().trim().min(3).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  type: z.enum(["PERCENTAGE", "AMOUNT"]),
+  discount: z.number().positive(),
+  store_wide: z.boolean().default(false),
+  products: z.array(z.string().min(1)).max(100).default([]),
+  product_variants: z.array(z.string().min(1)).max(200).default([]),
+  limit: z.number().int().positive().max(100000).optional(),
+  expires_at: z.string().datetime().optional(),
+  minimum_amount: z.number().nonnegative().optional(),
+}).superRefine((value, ctx) => {
+  if (!value.store_wide && value.products.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["products"], message: "Selecciona al menos un producto o activa el ámbito de toda la tienda." });
+  }
+});
+
+async function authorize(botId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: NextResponse.json({ error: "Inicia sesión" }, { status: 401 }) };
+  const now = new Date();
+  const bot = await prisma.botInstance.findFirst({
+    where: { id: botId, service: {
+      userId: user.id, serviceType: "DISCORD_BOT", status: "ACTIVE",
+      subscriptions: { some: { userId: user.id, status: { in: ["ACTIVE", "TRIALING"] }, currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now } } },
+    } },
+    select: { id: true },
+  });
+  if (!bot) return { error: NextResponse.json({ error: "Suscripción o instancia no disponible" }, { status: 403 }) };
+  return { bot };
+}
+
+async function readConfig(botId: string) {
+  const row = await prisma.setting.findUnique({ where: { key: settingKey(botId) } });
+  if (!row) return null;
+  try { return JSON.parse(row.value) as { apiKeyEncrypted: string; enabled: boolean; storeName: string; lastValidatedAt?: string | null }; }
+  catch { return null; }
+}
+
+async function sellAuthRequest(apiKey: string, path: string, init: RequestInit = {}) {
+  const response = await fetch(`https://api.sellauth.com${path}`, {
+    ...init,
+    headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}`, ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers },
+    cache: "no-store",
+    signal: AbortSignal.timeout(12000),
+  });
+  const body = await response.text();
+  let data: any = null;
+  try { data = body ? JSON.parse(body) : null; } catch { data = { message: body.slice(0, 500) }; }
+  if (!response.ok) {
+    const message = typeof data?.message === "string" ? data.message : `SellAuth respondió ${response.status}`;
+    throw Object.assign(new Error(message), { status: response.status });
+  }
+  return data;
+}
+
+async function getApiKey(botId: string) {
+  const config = await readConfig(botId);
+  if (!config?.apiKeyEncrypted || !config.enabled) throw new Error("La integración SellAuth no está configurada o está desactivada.");
+  return decryptSecret(config.apiKeyEncrypted);
+}
+
+type Context = { params: { id: string } };
+
+export async function GET(_request: Request, { params }: Context) {
+  const access = await authorize(params.id);
+  if (access.error) return access.error;
+  const config = await readConfig(params.id);
+  if (!config) return NextResponse.json({ configured: false, enabled: false });
+  let maskedKey = "••••••••";
+  try { maskedKey = maskToken(decryptSecret(config.apiKeyEncrypted)); } catch {}
+  return NextResponse.json({
+    configured: Boolean(config.apiKeyEncrypted),
+    enabled: Boolean(config.enabled),
+    storeName: config.storeName || "",
+    maskedKey,
+    lastValidatedAt: config.lastValidatedAt || null,
+  });
+}
+
+export async function PUT(request: Request, { params }: Context) {
+  const access = await authorize(params.id);
+  if (access.error) return access.error;
+  const schema = z.object({
+    apiKey: z.string().trim().min(12).max(500).optional().or(z.literal("")),
+    storeName: z.string().trim().max(100).default(""),
+    enabled: z.boolean().default(true),
+  });
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Configuración inválida", fields: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const old = await readConfig(params.id);
+  if (!parsed.data.apiKey && !old?.apiKeyEncrypted) return NextResponse.json({ error: "Introduce la API Key de SellAuth." }, { status: 400 });
+  const config = {
+    apiKeyEncrypted: parsed.data.apiKey ? encryptSecret(parsed.data.apiKey) : old!.apiKeyEncrypted,
+    storeName: parsed.data.storeName,
+    enabled: parsed.data.enabled,
+    lastValidatedAt: old?.lastValidatedAt || null,
+  };
+  await prisma.setting.upsert({
+    where: { key: settingKey(params.id) },
+    create: { key: settingKey(params.id), category: "INTEGRATION_SELLAUTH", value: JSON.stringify(config) },
+    update: { category: "INTEGRATION_SELLAUTH", value: JSON.stringify(config) },
+  });
+  return NextResponse.json({ success: true, configured: true, enabled: config.enabled, message: "Credenciales guardadas de forma cifrada." });
+}
+
+export async function POST(request: Request, { params }: Context) {
+  const access = await authorize(params.id);
+  if (access.error) return access.error;
+  const body = await request.json().catch(() => null);
+  const operation = z.object({ operation: z.enum(["test", "products", "create-coupon"]), coupon: couponSchema.optional() }).safeParse(body);
+  if (!operation.success) return NextResponse.json({ error: "Operación no válida." }, { status: 400 });
+  try {
+    const apiKey = await getApiKey(params.id);
+    if (operation.data.operation === "test") {
+      await sellAuthRequest(apiKey, "/v1/products?limit=1");
+      const config = await readConfig(params.id);
+      if (config) await prisma.setting.update({ where: { key: settingKey(params.id) }, data: { value: JSON.stringify({ ...config, lastValidatedAt: new Date().toISOString() }) } });
+      return NextResponse.json({ success: true, message: "Conexión con SellAuth verificada." });
+    }
+    if (operation.data.operation === "products") {
+      const result = await sellAuthRequest(apiKey, "/v1/products");
+      const products = Array.isArray(result) ? result : Array.isArray(result?.data) ? result.data : Array.isArray(result?.products) ? result.products : [];
+      return NextResponse.json({ success: true, products: products.map((product: any) => ({
+        id: String(product.id ?? product.uuid ?? ""),
+        name: String(product.name ?? product.title ?? "Producto sin nombre"),
+        variants: Array.isArray(product.variants) ? product.variants.map((variant: any) => ({ id: String(variant.id ?? variant.uuid ?? ""), name: String(variant.name ?? variant.title ?? "Variante") })) : [],
+      })).filter((product: any) => product.id) });
+    }
+    if (!operation.data.coupon) return NextResponse.json({ error: "Faltan los datos del cupón." }, { status: 400 });
+    const coupon = couponSchema.safeParse(operation.data.coupon);
+    if (!coupon.success) return NextResponse.json({ error: "Datos del cupón inválidos.", fields: coupon.error.flatten().fieldErrors }, { status: 400 });
+    const result = await sellAuthRequest(apiKey, "/v1/coupons", { method: "POST", body: JSON.stringify(coupon.data) });
+    return NextResponse.json({ success: true, coupon: result });
+  } catch (error) {
+    const status = typeof error === "object" && error && "status" in error ? Number((error as any).status) : 502;
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Error conectando con SellAuth." }, { status: status >= 400 && status < 600 ? status : 502 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: Context) {
+  const access = await authorize(params.id);
+  if (access.error) return access.error;
+  await prisma.setting.deleteMany({ where: { key: settingKey(params.id) } });
+  return NextResponse.json({ success: true });
+}
