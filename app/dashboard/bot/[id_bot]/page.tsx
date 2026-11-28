@@ -165,7 +165,9 @@ export default function BotInstanceDashboardPage() {
       ) : (
         <div className="rounded-2xl border border-slate-800 bg-[#111827] p-3 sm:p-6 space-y-4 min-w-0">
           <p className="text-sm text-slate-300">Estás administrando exclusivamente <strong>{service.name}</strong>. Los cambios de esta sección se aplican únicamente a esta instancia.</p>
-          {selectedModule.requiresGuild&&!service.bot?.guildId ? (<div className="rounded-xl border border-amber-800 p-4 text-sm">Vincula primero un servidor de Discord. <Link className="text-blue-400 underline" href={modules.find(m=>m.key==="credentials")!.href(botId)}>Configurar servidor</Link></div>) : selectedModule.key === "deliveries" ? (
+          {selectedModule.requiresGuild&&!service.bot?.guildId ? (<div className="rounded-xl border border-amber-800 p-4 text-sm">Vincula primero un servidor de Discord. <Link className="text-blue-400 underline" href={modules.find(m=>m.key==="credentials")!.href(botId)}>Configurar servidor</Link></div>) : selectedModule.key === "integrations" ? (
+            <BotSellAuthPanel botId={botId} />
+          ) : selectedModule.key === "deliveries" ? (
             <BotDeliveriesPanel botId={botId} />
           ) : selectedModule.key === "absences" && service.bot?.guildId ? (
             <BotAbsencePanel guildId={service.bot.guildId} />
