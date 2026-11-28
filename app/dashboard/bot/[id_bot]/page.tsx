@@ -20,6 +20,7 @@ import { BotAbsencePanel } from "@/components/dashboard/bot-absence-panel";
 import { BotRecruitmentPanel } from "@/components/dashboard/bot-recruitment-panel";
 import { BotEmployeesPanel } from "@/components/dashboard/bot-employees-panel";
 import { BotAutomationsPanel } from "@/components/dashboard/bot-automations-panel";
+import { BotSellAuthPanel } from "@/components/dashboard/bot-sellauth-panel";
 import { BotAnalyticsPanel } from "@/components/dashboard/bot-analytics-panel";
 import { BotScheduledMessagesPanel } from "@/components/dashboard/bot-scheduled-messages-panel";
 import { BotInvitesPanel } from "@/components/dashboard/bot-invites-panel";
