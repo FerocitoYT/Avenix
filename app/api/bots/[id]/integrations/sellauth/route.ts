@@ -121,7 +121,7 @@ export async function PUT(request: Request, { params }: Context) {
     apiKeyEncrypted: parsed.data.apiKey ? encryptSecret(parsed.data.apiKey) : old!.apiKeyEncrypted,
     storeSlug: parsed.data.storeSlug,
     enabled: parsed.data.enabled,
-    lastValidatedAt: old?.lastValidatedAt || null,
+    lastValidatedAt: parsed.data.apiKey || parsed.data.storeSlug !== (old?.storeSlug || "") ? null : old?.lastValidatedAt || null,
   };
   await prisma.setting.upsert({
     where: { key: settingKey(params.id) },
