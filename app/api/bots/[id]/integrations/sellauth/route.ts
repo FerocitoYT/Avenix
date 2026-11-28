@@ -17,12 +17,20 @@ const couponSchema = z.object({
   product_variants: z.array(z.string().regex(/^\d+$/)).max(200).default([]),
   limit: z.number().int().positive().max(100000).nullable().optional(),
   expires_at: z.string().datetime().nullable().optional(),
-  minimum_amount: z.number().min(1).nullable().optional(),\n  applies_to: z.enum(["one_time", "subscriptions"]).default("one_time"),\n  subscription_payments: z.number().int().min(1).max(36).nullable().optional(),
+  minimum_amount: z.number().min(1).nullable().optional(),
+  applies_to: z.enum(["one_time", "subscriptions"]).default("one_time"),
+  subscription_payments: z.number().int().min(1).max(36).nullable().optional(),
 }).superRefine((value, ctx) => {
   if (value.type === "PERCENTAGE" && value.discount > 100) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount"], message: "El porcentaje no puede superar el 100%." });
   }
-  if (value.applies_to === "subscriptions" && !value.subscription_payments) {\n    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["subscription_payments"], message: "Indica cuántos pagos de la suscripción tendrán descuento." });\n  }\n  if (value.applies_to === "subscriptions" && value.type === "PERCENTAGE" && value.discount >= 100) {\n    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount"], message: "Los cupones de suscripción no admiten un descuento del 100%." });\n  }\n  if (!value.store_wide && value.products.length === 0) {
+  if (value.applies_to === "subscriptions" && !value.subscription_payments) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["subscription_payments"], message: "Indica cuántos pagos de la suscripción tendrán descuento." });
+  }
+  if (value.applies_to === "subscriptions" && value.type === "PERCENTAGE" && value.discount >= 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount"], message: "Los cupones de suscripción no admiten un descuento del 100%." });
+  }
+  if (!value.store_wide && value.products.length === 0) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["products"], message: "Selecciona productos o activa el ámbito de toda la tienda." });
   }
 });
