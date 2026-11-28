@@ -149,7 +149,7 @@ export async function POST(request: Request, { params }: Context) {
       const products: any[] = [];
       let lastPage = 1;
       for (let page = 1; page <= Math.min(lastPage, 50); page++) {
-        const result = await sellAuthRequest(apiKey, storeSlug, `/v2/products?limit=100&page=${page}&with_drafts=true`);
+        const result = await sellAuthRequest(apiKey, storeSlug, `/v2/products?limit=100&page=${page}`);
         if (Array.isArray(result?.data)) products.push(...result.data);
         lastPage = Math.max(1, Number(result?.meta?.last_page) || 1);
       }
